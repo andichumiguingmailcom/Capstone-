@@ -9,7 +9,7 @@
 <body>
 <?php
 require_once 'includes/config.php';
-requireLogin();
+requireLogin('general_manager');
 $activePage = 'loan_apps';
 $db = getDB();
 

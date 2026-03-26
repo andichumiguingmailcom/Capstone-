@@ -31,12 +31,16 @@ function requireLogin($role = null) {
         exit;
     }
 
-    $adminRoles = ['general_manager'];
-    if ($role) {
-        if ($_SESSION['role'] !== $role && !in_array($_SESSION['role'], $adminRoles)) {
-            header('Location: unauthorized.php');
-            exit;
-        }
+    if (!$role) {
+        return;
+    }
+
+    $allowedRoles = is_array($role) ? $role : [$role];
+    $allowedRoles[] = 'general_manager'; // GM has override rights
+
+    if (!in_array($_SESSION['role'], $allowedRoles, true)) {
+        header('Location: unauthorized.php');
+        exit;
     }
 }
 

@@ -10,7 +10,7 @@
 <body>
 <?php
 require_once 'includes/config.php';
-requireLogin();
+requireLogin('book_keeper');
 $activePage = 'reports';
 $db = getDB();
 

@@ -30,14 +30,18 @@ function requireLogin($role = null) {
         header('Location: index.php');
         exit;
     }
-    if ($role && $_SESSION['role'] !== $role && $_SESSION['role'] !== 'admin') {
-        header('Location: unauthorized.php');
-        exit;
+
+    $adminRoles = ['general_manager'];
+    if ($role) {
+        if ($_SESSION['role'] !== $role && !in_array($_SESSION['role'], $adminRoles)) {
+            header('Location: unauthorized.php');
+            exit;
+        }
     }
 }
 
 function isAdmin() {
-    return isset($_SESSION['role']) && $_SESSION['role'] === 'admin';
+    return isset($_SESSION['role']) && $_SESSION['role'] === 'general_manager';
 }
 
 function isMember() {

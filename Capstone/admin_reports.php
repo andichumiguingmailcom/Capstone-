@@ -42,7 +42,7 @@ $topProducts = $db->query("SELECT p.name, p.category, SUM(si.qty) as sold_qty, S
     GROUP BY si.product_id ORDER BY revenue DESC LIMIT 10");
 
 // Payment history
-$payments = $db->query("SELECT lp.*, m.full_name, m.member_id as mem_code 
+$payments = $db->query("SELECT lp.*, CONCAT_WS(' ', m.first_name, m.middle_name, m.last_name) AS full_name, m.member_id as mem_code 
     FROM loan_payments lp JOIN loans l ON lp.loan_id=l.id JOIN members m ON l.member_id=m.id
     WHERE DATE(lp.paid_at) BETWEEN '$from' AND '$to' ORDER BY lp.paid_at DESC LIMIT 20");
 
@@ -103,7 +103,7 @@ $totalPayments = $db->query("SELECT SUM(amount) as s FROM loan_payments WHERE DA
                 <thead><tr><th>Member</th><th>Type</th><th>Amount</th><th>Term</th><th>Status</th><th>Date</th></tr></thead>
                 <tbody>
                   <?php
-                  $loans = $db->query("SELECT la.*, m.full_name, m.member_id as mc, lt.type_name 
+                  $loans = $db->query("SELECT la.*, CONCAT_WS(' ', m.first_name, m.middle_name, m.last_name) AS full_name, m.member_id as mc, lt.type_name 
                     FROM loan_applications la JOIN members m ON la.member_id=m.id 
                     JOIN loan_types lt ON la.loan_type_id=lt.id 
                     WHERE DATE(la.applied_at) BETWEEN '$from' AND '$to' ORDER BY la.applied_at DESC");

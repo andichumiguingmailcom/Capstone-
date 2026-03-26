@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS users (
     middle_name VARCHAR(60),
     last_name   VARCHAR(60) NOT NULL,
     email       VARCHAR(120),
-    role        ENUM('admin','staff') DEFAULT 'staff',
+    role        ENUM('loan_officer','cashier','book_keeper','collector','general_manager','staff') DEFAULT 'staff',
     is_active   TINYINT(1) DEFAULT 1,
     created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP

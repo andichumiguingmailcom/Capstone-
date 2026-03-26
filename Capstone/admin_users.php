@@ -9,26 +9,37 @@
 <body>
 <?php
 require_once 'includes/config.php';
-requireLogin();
+requireLogin('general_manager');
 $activePage = 'users';
 $db = getDB();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = clean($_POST['action'] ?? '');
     if ($action === 'add_user') {
+        $allowedRoles = ['loan_officer','cashier','book_keeper','collector','general_manager'];
+
         $uname = clean($_POST['username']);
         $fname = clean($_POST['first_name']); $mname = clean($_POST['middle_name']); $lname = clean($_POST['last_name']);
         $email = clean($_POST['email']); $role = clean($_POST['role']);
+
+        if (!in_array($role, $allowedRoles, true)) {
+            $role = 'staff';
+        }
+
         $pass  = password_hash($_POST['password'], PASSWORD_DEFAULT);
         $stmt  = $db->prepare("INSERT INTO users (username,password,first_name,middle_name,last_name,email,role) VALUES (?,?,?,?,?,?,?)");
         $stmt->bind_param('sssssss', $uname,$pass,$fname,$mname,$lname,$email,$role);
         $stmt->execute();
         header('Location: admin_users.php?msg=User+added.'); exit;
     }
-    if ($action === 'toggle_user') {
-        $id = (int)$_POST['id']; $active = (int)$_POST['is_active'];
-        $db->query("UPDATE users SET is_active=$active WHERE id=$id");
-        header('Location: admin_users.php?msg=User+updated.'); exit;
+    if ($action === 'delete_user') {
+        $id = (int)$_POST['id'];
+        if ($id > 0) {
+            $stmt = $db->prepare("DELETE FROM users WHERE id = ?");
+            $stmt->bind_param('i', $id);
+            $stmt->execute();
+        }
+        header('Location: admin_users.php?msg=User+deleted.'); exit;
     }
 }
 
@@ -63,16 +74,25 @@ $users = $db->query("SELECT *, CONCAT_WS(' ', first_name, middle_name, last_name
                 <td class="fw-600"><?= htmlspecialchars($u['username']) ?></td>
                 <td><?= htmlspecialchars($u['full_name']) ?></td>
                 <td class="text-muted"><?= htmlspecialchars($u['email'] ?? '—') ?></td>
-                <td><span class="badge <?= $u['role']==='admin'?'badge-red':'badge-blue' ?>"><?= ucfirst($u['role']) ?></span></td>
+                <?php
+                  $roleLabels = [
+                    'loan_officer' => 'Loan Officer',
+                    'cashier' => 'Cashier',
+                    'book_keeper' => 'Book Keeper',
+                    'collector' => 'Collector',
+                    'general_manager' => 'General Manager',
+                    'staff' => 'Staff'
+                  ];
+                  $badgeClass = $u['role'] === 'general_manager' ? 'badge-red' : 'badge-blue';
+                  $roleLabel = $roleLabels[$u['role']] ?? ucfirst(str_replace('_', ' ', $u['role']));
+                ?>
+                <td><span class="badge <?= $badgeClass ?>"><?= htmlspecialchars($roleLabel) ?></span></td>
                 <td><span class="badge <?= $u['is_active']?'badge-green':'badge-gray' ?>"><?= $u['is_active']?'Active':'Inactive' ?></span></td>
                 <td>
-                  <form method="POST" style="display:inline;">
-                    <input type="hidden" name="action" value="toggle_user">
+                  <form method="POST" style="display:inline;" onsubmit="return confirm('Delete this user account?');">
+                    <input type="hidden" name="action" value="delete_user">
                     <input type="hidden" name="id" value="<?= $u['id'] ?>">
-                    <input type="hidden" name="is_active" value="<?= $u['is_active']?0:1 ?>">
-                    <button type="submit" class="btn btn-sm <?= $u['is_active']?'btn-danger':'btn-primary' ?>">
-                      <?= $u['is_active']?'Deactivate':'Activate' ?>
-                    </button>
+                    <button type="submit" class="btn btn-sm btn-danger">Delete</button>
                   </form>
                 </td>
               </tr>
@@ -94,7 +114,13 @@ $users = $db->query("SELECT *, CONCAT_WS(' ', first_name, middle_name, last_name
       <div class="form-row">
         <div class="form-group"><label class="form-label">Username</label><input type="text" name="username" class="form-control" required></div>
         <div class="form-group"><label class="form-label">Role</label>
-          <select name="role" class="form-control" required><option value="staff">Staff</option><option value="admin">Admin</option></select>
+          <select name="role" class="form-control" required>
+            <option value="loan_officer">Loan Officer</option>
+            <option value="cashier">Cashier</option>
+            <option value="book_keeper">Book Keeper</option>
+            <option value="collector">Collector</option>
+            <option value="general_manager">General Manager</option>
+          </select>
         </div>
       </div>
       <div class="form-row">

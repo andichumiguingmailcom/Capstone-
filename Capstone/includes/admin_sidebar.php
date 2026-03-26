@@ -48,12 +48,14 @@ $user = getCurrentUser();
     <a href="admin_reports.php" class="nav-item <?= ($activePage??'') === 'reports' ? 'active' : '' ?>">
       <span class="nav-icon">📈</span> Reports
     </a>
-    <a href="admin_users.php" class="nav-item <?= ($activePage??'') === 'users' ? 'active' : '' ?>">
-      <span class="nav-icon">🔧</span> User Management
-    </a>
-    <a href="admin_audit.php" class="nav-item <?= ($activePage??'') === 'audit' ? 'active' : '' ?>">
-      <span class="nav-icon">🔍</span> Audit Logs
-    </a>
+    <?php if ($user['role'] === 'general_manager'): ?>
+      <a href="admin_users.php" class="nav-item <?= ($activePage??'') === 'users' ? 'active' : '' ?>">
+        <span class="nav-icon">🔧</span> User Management
+      </a>
+      <a href="admin_audit.php" class="nav-item <?= ($activePage??'') === 'audit' ? 'active' : '' ?>">
+        <span class="nav-icon">🔍</span> Audit Logs
+      </a>
+    <?php endif; ?>
     <a href="logout.php" class="nav-item" style="color:rgba(255,100,100,0.8);">
       <span class="nav-icon">🚪</span> Logout
     </a>

@@ -36,7 +36,7 @@ $user = getCurrentUser();
     <?php endif; ?>
     <?php if (in_array($user['role'], ['general_manager','book_keeper'], true)): ?>
     <a href="admin_loans.php" class="nav-item <?= ($activePage??'') === 'loans' ? 'active' : '' ?>">
-      <span class="nav-icon">💳</span> Active Loans
+      <span class="nav-icon">💳</span> Loan Records
     </a>
     <?php endif; ?>
     <?php if ($user['role'] === 'general_manager'): ?>

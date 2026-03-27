@@ -15,21 +15,6 @@ $db = getDB();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = clean($_POST['action'] ?? '');
-    if ($action === 'add_member') {
-        $mid    = clean($_POST['member_id']);
-        $fname  = clean($_POST['first_name']);
-        $mname  = clean($_POST['middle_name']);
-        $lname  = clean($_POST['last_name']);
-        $email  = clean($_POST['email']);
-        $phone  = clean($_POST['phone']);
-        $street = clean($_POST['street']); $brgy = clean($_POST['barangay']);
-        $city   = clean($_POST['city']);   $prov = clean($_POST['province']);
-        $joined = clean($_POST['date_joined']);
-        $stmt = $db->prepare("INSERT INTO members (member_id, first_name, middle_name, last_name, email, phone, street, barangay, city, province, date_joined) VALUES (?,?,?,?,?,?,?,?,?,?,?)");
-        $stmt->bind_param('sssssssssss', $mid, $fname, $mname, $lname, $email, $phone, $street, $brgy, $city, $prov, $joined);
-        $stmt->execute();
-        header('Location: admin_members.php?msg=Member+added.'); exit;
-    }
     if ($action === 'update_status') {
         $id = (int)$_POST['id']; $status = clean($_POST['status']);
         $db->query("UPDATE members SET status='$status' WHERE id=$id");
@@ -52,7 +37,6 @@ $activeMembers = $db->query("SELECT COUNT(*) as c FROM members WHERE status='act
   <div class="topbar">
     <div class="topbar-title">Member Management</div>
     <div class="topbar-actions">
-      <button class="btn btn-primary" onclick="openModal('modal-add-member')">+ Add Member</button>
     </div>
   </div>
 
@@ -113,42 +97,6 @@ $activeMembers = $db->query("SELECT COUNT(*) as c FROM members WHERE status='act
         </div>
       </div>
     </div>
-  </div>
-</div>
-
-<!-- ADD MEMBER MODAL -->
-<div class="modal-overlay" id="modal-add-member">
-  <div class="modal">
-    <button class="modal-close" onclick="closeModal('modal-add-member')">✕</button>
-    <div class="modal-title">👤 Add New Member</div>
-    <form method="POST">
-      <input type="hidden" name="action" value="add_member">
-      <div class="form-row">
-        <div class="form-group"><label class="form-label">Member ID</label><input type="text" name="member_id" class="form-control" required placeholder="MEM-001"></div>
-        <div class="form-group"><label class="form-label">Date Joined</label><input type="date" name="date_joined" class="form-control" required></div>
-      </div>
-      <div class="form-row">
-        <div class="form-group"><label class="form-label">First Name</label><input type="text" name="first_name" class="form-control" required></div>
-        <div class="form-group"><label class="form-label">Middle Name</label><input type="text" name="middle_name" class="form-control"></div>
-        <div class="form-group"><label class="form-label">Last Name</label><input type="text" name="last_name" class="form-control" required></div>
-      </div>
-      <div class="form-row">
-        <div class="form-group"><label class="form-label">Email</label><input type="email" name="email" class="form-control"></div>
-        <div class="form-group"><label class="form-label">Phone</label><input type="text" name="phone" class="form-control" placeholder="09XX-XXX-XXXX"></div>
-      </div>
-      <div class="form-row">
-        <div class="form-group"><label class="form-label">Street</label><input type="text" name="street" class="form-control"></div>
-        <div class="form-group"><label class="form-label">Barangay</label><input type="text" name="barangay" class="form-control"></div>
-      </div>
-      <div class="form-row">
-        <div class="form-group"><label class="form-label">City/Municipality</label><input type="text" name="city" class="form-control"></div>
-        <div class="form-group"><label class="form-label">Province</label><input type="text" name="province" class="form-control"></div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-ghost" onclick="closeModal('modal-add-member')">Cancel</button>
-        <button type="submit" class="btn btn-primary">Add Member</button>
-      </div>
-    </form>
   </div>
 </div>
 

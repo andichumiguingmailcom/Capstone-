@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $price= (float)$_POST['price']; $stock= (int)$_POST['stock'];
         $rop  = (int)$_POST['reorder_pt'];
         $stmt = $db->prepare("INSERT INTO products (sku,name,category,unit,price,stock,reorder_pt) VALUES (?,?,?,?,?,?,?)");
-        $stmt->bind_param('ssssdi i', $sku,$name,$cat,$unit,$price,$stock,$rop);
+        $stmt->bind_param('ssssdii', $sku,$name,$cat,$unit,$price,$stock,$rop);
         $stmt->execute();
         header('Location: admin_inventory.php?msg=Product+added.'); exit;
     }

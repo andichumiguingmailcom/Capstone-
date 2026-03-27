@@ -31,7 +31,7 @@ define('SMTP_PASSWORD', 'wkhrtajdvqckwbzz'); // Gmail App Password without space
 define('SMTP_SECURE', PHPMailer::ENCRYPTION_STARTTLS);
 define('SMTP_PORT', 587);
 
-requireLogin();
+requireLogin('general_manager');
 $activePage = 'pre_apps';
 $db = getDB();
 
@@ -45,6 +45,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $applicant = $stmt->get_result()->fetch_assoc();
 
         $db->query("UPDATE pre_applications SET status='$action', admin_notes='$notes', verified_at=NOW() WHERE id=$id");
+
+        // If approved and user is general_manager, automatically add to members
+        if ($action === 'approved' && $_SESSION['role'] === 'general_manager') {
+            $appData = $db->query("SELECT * FROM pre_applications WHERE id=$id")->fetch_assoc();
+            $memberId = 'MEM-' . str_pad($id, 4, '0', STR_PAD_LEFT);
+            $dateJoined = date('Y-m-d');
+            $status = 'active';
+            $stmt = $db->prepare("INSERT INTO members (member_id, first_name, middle_name, last_name, email, phone, street, barangay, city, province, date_joined, status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)");
+            $stmt->bind_param('ssssssssssss', $memberId, $appData['first_name'], $appData['middle_name'], $appData['last_name'], $appData['email'], $appData['phone'], $appData['street'], $appData['barangay'], $appData['city'], $appData['province'], $dateJoined, $status);
+            $stmt->execute();
+        }
 
         // Send Email Notification via PHPMailer
         $emailError = '';

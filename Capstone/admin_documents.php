@@ -27,8 +27,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['document'])) {
         if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
         $fname = 'doc_' . time() . '_' . uniqid() . '.' . $ext;
         move_uploaded_file($file['tmp_name'], $uploadDir . $fname);
+        $filepath = $uploadDir . $fname;
         $stmt = $db->prepare("INSERT INTO documents (member_id, doc_type, filename, filepath, uploaded_by) VALUES (?,?,?,?,?)");
-        $stmt->bind_param('isssi', $memberId, $docType, $fname, $uploadDir.$fname, $uid);
+        $stmt->bind_param('isssi', $memberId, $docType, $fname, $filepath, $uid);
         $stmt->execute();
         header('Location: admin_documents.php?msg=Document+uploaded.'); exit;
     }

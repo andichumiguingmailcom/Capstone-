@@ -9,63 +9,90 @@
 <body>
 <?php
 require_once 'includes/config.php';
-requireLogin('general_manager');
+
+// PHPMailer Classes
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+if (file_exists('vendor/autoload.php')) {
+    require 'vendor/autoload.php';
+} else {
+    require_once __DIR__ . '/PHPMailer/src/Exception.php';
+    require_once __DIR__ . '/PHPMailer/src/PHPMailer.php';
+    require_once __DIR__ . '/PHPMailer/src/SMTP.php';
+}
+
+// Email settings (update values to your SMTP provider/account)
+define('MAIL_FROM', 'no-reply@coopims.com');
+define('MAIL_FROM_NAME', 'CoopIMS');
+define('SMTP_HOST', 'smtp.gmail.com');
+define('SMTP_AUTH', true);
+define('SMTP_USERNAME', 'bichamco5@gmail.com');
+define('SMTP_PASSWORD', 'wkhrtajdvqckwbzz'); // Gmail App Password without spaces
+define('SMTP_SECURE', PHPMailer::ENCRYPTION_STARTTLS);
+define('SMTP_PORT', 587);
+
+requireLogin();
 $activePage = 'pre_apps';
 $db = getDB();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $id = (int)$_POST['id']; $action = clean($_POST['action']); $notes = clean($_POST['notes'] ?? '');
     if (in_array($action, ['approved','rejected'])) {
-        if ($action === 'approved') {
-            $pre = $db->query("SELECT * FROM pre_applications WHERE id=$id")->fetch_assoc();
-            if ($pre && $pre['status'] === 'pending') {
-                // 1. Auto-generate Member ID based on the last record
-                $res = $db->query("SELECT member_id FROM members WHERE member_id LIKE 'MEM-%' ORDER BY id DESC LIMIT 1");
-                $last_id = ($res && $res->num_rows > 0) ? $res->fetch_assoc()['member_id'] : 'MEM-000';
-                preg_match('/\d+/', $last_id, $matches);
-                $num = isset($matches[0]) ? (int)$matches[0] : 0;
-                $new_member_id = 'MEM-' . str_pad($num + 1, 3, '0', STR_PAD_LEFT);
+        // Fetch applicant details for notification before updating
+        $stmt = $db->prepare("SELECT first_name, email FROM pre_applications WHERE id = ?");
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $applicant = $stmt->get_result()->fetch_assoc();
 
-                // 2. Insert data into the members table
-                $stmt = $db->prepare("INSERT INTO members (member_id, first_name, middle_name, last_name, email, phone, street, barangay, city, province, date_joined, status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)");
-                $today = date('Y-m-d');
-                $status = 'active';
-                $stmt->bind_param('ssssssssssss', 
-                    $new_member_id, $pre['first_name'], $pre['middle_name'], $pre['last_name'], 
-                    $pre['email'], $pre['phone'], $pre['street'], $pre['barangay'], 
-                    $pre['city'], $pre['province'], $today, $status
-                );
-                $stmt->execute();
-                $new_member_pk = $db->insert_id;
-                $uid = $_SESSION['user_id'] ?? 0;
+        $db->query("UPDATE pre_applications SET status='$action', admin_notes='$notes', verified_at=NOW() WHERE id=$id");
 
-                // 3. Migrate uploaded documents to the member's official document history
-                $db->query("INSERT INTO documents (member_id, doc_type, filename, filepath, uploaded_by) 
-                            SELECT $new_member_pk, doc_type, filename, filepath, $uid 
-                            FROM pre_application_documents WHERE pre_application_id=$id");
+        // Send Email Notification via PHPMailer
+        $emailError = '';
+        if ($applicant && !empty($applicant['email'])) {
+            $mail = new PHPMailer(true);
+            try {
+                // SMTP Server Settings
+                $mail->isSMTP();
+                $mail->Host       = SMTP_HOST; // e.g., smtp.gmail.com
+                $mail->SMTPAuth   = SMTP_AUTH;
+                $mail->Username   = SMTP_USERNAME;
+                $mail->Password   = SMTP_PASSWORD;
+                $mail->SMTPSecure = SMTP_SECURE;
+                $mail->Port       = SMTP_PORT;
+                $mail->SMTPAutoTLS = true;
+                $mail->SMTPOptions = [
+                    'ssl' => [
+                        'verify_peer' => false,
+                        'verify_peer_name' => false,
+                        'allow_self_signed' => true,
+                    ],
+                ];
+                $mail->CharSet    = 'UTF-8';
+                $mail->setFrom(SMTP_USERNAME, MAIL_FROM_NAME); // for Gmail SMTP, from should match authenticated account
+                $mail->addReplyTo(MAIL_FROM, MAIL_FROM_NAME);
+                $mail->SMTPDebug  = 0; // Set to 2 for debugging if needed
+                $mail->Debugoutput = function($str, $level) {
+                    error_log("PHPMailer debug level {$level}: {$str}");
+                };
 
-                // 4. Send Approval Email with Credentials
-                $to = $pre['email'];
-                $subject = "Welcome to CoopIMS - Your Membership is Approved!";
-                $pin = substr($pre['phone'], -4);
-                $login_url = "http://localhost/Capstone/member_login.php"; // Update this to your actual domain
-
-                $message = "Dear " . htmlspecialchars($pre['first_name']) . ",\n\n";
-                $message .= "Congratulations! Your membership application has been approved.\n\n";
-                $message .= "You can now log in to the Member Portal using the following credentials:\n";
-                $message .= "Member ID: " . $new_member_id . "\n";
-                $message .= "PIN: " . $pin . " (The last 4 digits of your phone number)\n\n";
-                $message .= "Access the portal here: " . $login_url . "\n\n";
-                $message .= "Best regards,\nThe Cooperative Team";
-
-                $headers = "From: no-reply@coopims.com\r\n";
-                mail($to, $subject, $message, $headers);
+                $mail->addAddress($applicant['email'], $applicant['first_name']);
+                $mail->isHTML(true);
+                $mail->Subject = 'Membership Application Status Update';
+                
+                $statusLabel = ucfirst($action);
+                $mail->Body = "Hello " . htmlspecialchars($applicant['first_name']) . ",<br><br>Your membership application at CoopIMS has been <b>$statusLabel</b>.<br>Admin Remarks: " . (!empty($notes) ? htmlspecialchars($notes) : "None") . "<br><br>Thank you,<br>CoopIMS Team";
+                $mail->send();
+            } catch (Exception $e) {
+                $emailError = "Mailer Error: " . $e->getMessage();
+                error_log("Pre-application email failed for ID {$id}: {$emailError}");
             }
         }
-        $stmt = $db->prepare("UPDATE pre_applications SET status=?, admin_notes=?, verified_at=NOW() WHERE id=?");
-        $stmt->bind_param('ssi', $action, $notes, $id);
-        $stmt->execute();
-        header('Location: admin_pre_applications.php?msg=' . urlencode("Application $action. Member record created automatically.")); exit;
+
+        $redirectMsg = "Application $action.";
+        if (!empty($emailError)) {
+            $redirectMsg .= " (Email notification failed)";
+        }
+        header('Location: admin_pre_applications.php?msg=' . urlencode($redirectMsg)); exit;
     }
 }
 

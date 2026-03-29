@@ -23,6 +23,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $cat  = clean($_POST['category']); $unit = clean($_POST['unit']);
         $price= (float)$_POST['price']; $stock= (int)$_POST['stock'];
         $rop  = (int)$_POST['reorder_pt'];
+
+        // Check if SKU already exists to prevent duplicate entry error
+        $check = $db->prepare("SELECT id FROM products WHERE sku = ?");
+        $check->bind_param('s', $sku);
+        $check->execute();
+        if ($check->get_result()->num_rows > 0) {
+            header('Location: admin_inventory.php?msg=Error:+A+product+with+this+SKU+already+exists.'); exit;
+        }
+
         $stmt = $db->prepare("INSERT INTO products (sku,name,category,unit,price,stock,reorder_pt) VALUES (?,?,?,?,?,?,?)");
         $stmt->bind_param('ssssdii', $sku,$name,$cat,$unit,$price,$stock,$rop);
         $stmt->execute();
@@ -86,8 +95,8 @@ $groceryCount  = $db->query("SELECT COUNT(*) as c FROM products WHERE category='
 
   <div class="page-body">
     <?php if ($msg): ?>
-      <div style="background:#d4f0dc;color:#1a6b3a;padding:12px 16px;border-radius:8px;margin-bottom:20px;border-left:3px solid #2e9e58;">
-        ✅ <?= htmlspecialchars($msg) ?>
+      <div style="background:<?= strpos($msg, 'Error') === 0 ? '#fee' : '#d4f0dc' ?>;color:<?= strpos($msg, 'Error') === 0 ? '#c33' : '#1a6b3a' ?>;padding:12px 16px;border-radius:8px;margin-bottom:20px;border-left:3px solid <?= strpos($msg, 'Error') === 0 ? '#e74c3c' : '#2e9e58' ?>;">
+        <?= strpos($msg, 'Error') === 0 ? '❌' : '✅' ?> <?= htmlspecialchars($msg) ?>
       </div>
     <?php endif; ?>
 

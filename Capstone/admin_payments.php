@@ -21,6 +21,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['loan_id']) && isset($
     $ref = clean($_POST['reference_no'] ?? '');
     $uid = $_SESSION['user_id'];
 
+    // Auto-generate receipt number for cash payments
+    if ($method === 'cash' && empty($ref)) {
+        $ref = 'RCP-' . date('YmdHis') . '-' . rand(100, 999);
+    }
+
     $stmt = $db->prepare("SELECT balance, status FROM loans WHERE id=?");
     $stmt->bind_param('i', $loanId);
     $stmt->execute();
@@ -47,7 +52,7 @@ $payments = $db->query("SELECT lp.*, CONCAT_WS(' ', m.first_name, m.middle_name,
     JOIN loan_types lt ON la.loan_type_id=lt.id
     ORDER BY lp.paid_at DESC");
 
-$activeLoans = $db->query("SELECT l.id, CONCAT_WS(' ', m.first_name, m.middle_name, m.last_name) AS full_name, lt.type_name, l.balance FROM loans l
+$activeLoans = $db->query("SELECT l.id, CONCAT_WS(' ', m.first_name, m.middle_name, m.last_name) AS full_name, m.member_id AS mem_code, lt.type_name, l.balance FROM loans l
     JOIN members m ON l.member_id=m.id
     JOIN loan_applications la ON l.application_id=la.id
     JOIN loan_types lt ON la.loan_type_id=lt.id
@@ -88,15 +93,15 @@ $activeLoans = $db->query("SELECT l.id, CONCAT_WS(' ', m.first_name, m.middle_na
             </div>
             <div class="form-group">
               <label class="form-label">Payment Method</label>
-              <select name="payment_method" class="form-control">
+              <select name="payment_method" class="form-control" id="paymentMethod" onchange="updateRefLabel()">
                 <option value="gcash">GCash</option>
                 <option value="cash">Cash</option>
-                <option value="bank">Bank</option>
               </select>
             </div>
             <div class="form-group">
-              <label class="form-label">Reference No.</label>
-              <input type="text" name="reference_no" class="form-control">
+              <label class="form-label" id="refLabel">Reference No.</label>
+              <input type="text" name="reference_no" id="referenceInput" class="form-control" placeholder="Leave empty for auto-generated receipt number">
+              <small class="text-muted" id="refHelper" style="display:none;">Will auto-generate receipt number if left empty</small>
             </div>
             <button type="submit" class="btn btn-primary" style="width:100%;">Save Payment</button>
           </form>
@@ -115,7 +120,7 @@ $activeLoans = $db->query("SELECT l.id, CONCAT_WS(' ', m.first_name, m.middle_na
                   <th>Loan Type</th>
                   <th>Amount</th>
                   <th>Method</th>
-                  <th>Reference</th>
+                  <th>Reference/Receipt</th>
                 </tr>
               </thead>
               <tbody>
@@ -143,5 +148,26 @@ $activeLoans = $db->query("SELECT l.id, CONCAT_WS(' ', m.first_name, m.middle_na
 </div>
 
 <script src="js/app.js"></script>
+<script>
+function updateRefLabel() {
+  const method = document.getElementById('paymentMethod').value;
+  const label = document.getElementById('refLabel');
+  const input = document.getElementById('referenceInput');
+  const helper = document.getElementById('refHelper');
+  
+  if (method === 'cash') {
+    label.textContent = 'Receipt No.';
+    input.placeholder = 'Leave empty for auto-generated receipt number';
+    helper.style.display = 'block';
+  } else {
+    label.textContent = 'Reference No.';
+    input.placeholder = 'e.g., GCash Reference Number';
+    helper.style.display = 'none';
+  }
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', updateRefLabel);
+</script>
 </body>
 </html>

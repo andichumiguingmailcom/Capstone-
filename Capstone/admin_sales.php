@@ -182,12 +182,8 @@ $monthTotal = $db->query("SELECT SUM(total) as s FROM sales WHERE MONTH(sale_dat
           <div class="sale-item" style="display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:8px;margin-bottom:8px;align-items:end;">
             <div>
               <label class="form-label" style="font-size:0.78rem;">Product</label>
-              <select name="items[]" class="form-control" onchange="fillPrice(this)" required>
-                <option value="">— Select —</option>
-                <?php $products->data_seek(0); while ($p = $products->fetch_assoc()): ?>
-                  <option value="<?= $p['id'] ?>" data-price="<?= $p['price'] ?>"><?= htmlspecialchars($p['name']) ?> (₱<?= number_format($p['price'],2) ?>)</option>
-                <?php endwhile; ?>
-              </select>
+              <input type="text" list="productList" class="form-control product-search" placeholder="Type to search..." oninput="fillPrice(this)" required>
+              <input type="hidden" name="items[]" class="product-id">
             </div>
             <div><label class="form-label" style="font-size:0.78rem;">Qty</label><input type="number" name="qtys[]" class="form-control" min="1" value="1" required oninput="calcTotal()"></div>
             <div><label class="form-label" style="font-size:0.78rem;">Price</label><input type="number" name="prices[]" class="form-control" step="0.01" required oninput="calcTotal()"></div>
@@ -210,18 +206,32 @@ $monthTotal = $db->query("SELECT SUM(total) as s FROM sales WHERE MONTH(sale_dat
   </div>
 </div>
 
+<datalist id="productList">
+  <?php $products->data_seek(0); while ($p = $products->fetch_assoc()): ?>
+    <option value="<?= htmlspecialchars($p['name']) ?>">
+  <?php endwhile; ?>
+</datalist>
+
 <script src="js/app.js"></script>
 <script>
-const productData = {};
+const productMap = {
 <?php $products->data_seek(0); while ($p = $products->fetch_assoc()): ?>
-productData[<?= $p['id'] ?>] = <?= $p['price'] ?>;
+  "<?= addslashes($p['name']) ?>": {id: <?= $p['id'] ?>, price: <?= $p['price'] ?>},
 <?php endwhile; ?>
+};
 
-function fillPrice(sel) {
-  const opt = sel.options[sel.selectedIndex];
-  const row = sel.closest('.sale-item');
-  const priceInput = row.querySelectorAll('input[name="prices[]"]')[0];
-  if (opt.dataset.price) priceInput.value = opt.dataset.price;
+function fillPrice(input) {
+  const name = input.value;
+  const row = input.closest('.sale-item');
+  const idInput = row.querySelector('.product-id');
+  const priceInput = row.querySelector('input[name="prices[]"]');
+  
+  if (productMap[name]) {
+    idInput.value = productMap[name].id;
+    priceInput.value = productMap[name].price;
+  } else {
+    idInput.value = '';
+  }
   calcTotal();
 }
 
@@ -264,16 +274,13 @@ function toggleCreditFields() {
 
 function addItem() {
   const tmpl = document.querySelector('.sale-item').cloneNode(true);
-  tmpl.querySelectorAll('input, select').forEach(el => { el.value = ''; if(el.name==='qtys[]') el.value='1'; });
-  tmpl.querySelector('select').addEventListener('change', function(){ fillPrice(this); });
+  tmpl.querySelectorAll('input').forEach(el => { el.value = ''; if(el.name==='qtys[]') el.value='1'; });
   document.getElementById('itemsContainer').appendChild(tmpl);
 }
 
 function removeItem(btn) {
   if (document.querySelectorAll('.sale-item').length > 1) { btn.closest('.sale-item').remove(); calcTotal(); }
 }
-
-document.querySelector('select[name="items[]"]').addEventListener('change', function(){ fillPrice(this); });
 </script>
 </body>
 </html>

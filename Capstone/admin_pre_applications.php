@@ -31,7 +31,7 @@ define('SMTP_PASSWORD', 'wkhrtajdvqckwbzz'); // Gmail App Password without space
 define('SMTP_SECURE', PHPMailer::ENCRYPTION_STARTTLS);
 define('SMTP_PORT', 587);
 
-requireLogin('general_manager');
+requireLogin(['general_manager','loan_officer']);
 $activePage = 'pre_apps';
 $db = getDB();
 

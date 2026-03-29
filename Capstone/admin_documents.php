@@ -9,7 +9,7 @@
 <body>
 <?php
 require_once 'includes/config.php';
-requireLogin('general_manager');
+requireLogin(['general_manager','loan_officer']);
 $activePage = 'documents';
 $db = getDB();
 

@@ -9,7 +9,7 @@
 <body>
 <?php
 require_once 'includes/config.php';
-requireLogin('general_manager');
+requireLogin(['general_manager','collector','loan_officer']);
 $activePage = 'loan_apps';
 $db = getDB();
 
@@ -47,7 +47,8 @@ $msg = clean($_GET['msg'] ?? '');
 $filterStatus = clean($_GET['status'] ?? '');
 
 $where = $filterStatus ? "WHERE la.status='$filterStatus'" : '';
-$applications = $db->query("SELECT la.*, CONCAT_WS(' ', m.first_name, m.last_name) as full_name, m.member_id AS mem_code, lt.type_name, lt.interest
+$applications = $db->query("SELECT la.*, CONCAT_WS(' ', m.first_name, m.last_name) as full_name, m.member_id AS mem_code, lt.type_name, lt.interest,
+    (SELECT id FROM loans WHERE application_id = la.id LIMIT 1) AS loan_id
     FROM loan_applications la 
     JOIN members m ON la.member_id = m.id 
     JOIN loan_types lt ON la.loan_type_id = lt.id
@@ -127,11 +128,21 @@ $members   = $db->query("SELECT id, member_id, CONCAT_WS(' ', first_name, last_n
                     onclick="approveApp(<?= $row['id'] ?>, 'approved')">✅ Approve</button>
                   <button class="btn btn-sm btn-danger" 
                     onclick="approveApp(<?= $row['id'] ?>, 'rejected')">❌ Reject</button>
-                  <?php else: ?>
-                  <button class="btn btn-sm btn-ghost" onclick="viewRemarks('<?= addslashes($row['remarks'] ?? 'No remarks') ?>')">
+                  <?php endif; ?>
+                  <button class="btn btn-sm btn-ghost" 
+                    onclick="viewApplication(this)"
+                    data-app-id="<?= $row['id'] ?>"
+                    data-loan-id="<?= $row['loan_id'] ?: '' ?>"
+                    data-member-name="<?= htmlspecialchars($row['full_name'], ENT_QUOTES) ?>"
+                    data-member-id="<?= htmlspecialchars($row['mem_code'], ENT_QUOTES) ?>"
+                    data-loan-type="<?= htmlspecialchars($row['type_name'], ENT_QUOTES) ?>"
+                    data-date-applied="<?= htmlspecialchars(date('Y-m-d', strtotime($row['applied_at'])), ENT_QUOTES) ?>"
+                    data-date-decision="<?= $row['approved_at'] ? htmlspecialchars(date('Y-m-d', strtotime($row['approved_at'])), ENT_QUOTES) : '' ?>"
+                    data-status="<?= htmlspecialchars($row['status'], ENT_QUOTES) ?>"
+                    data-remarks="<?= htmlspecialchars($row['remarks'] ?? 'No remarks', ENT_QUOTES) ?>"
+                  >
                     📄 View
                   </button>
-                  <?php endif; ?>
                 </td>
               </tr>
               <?php endwhile; ?>
@@ -211,14 +222,24 @@ $members   = $db->query("SELECT id, member_id, CONCAT_WS(' ', first_name, last_n
   </div>
 </div>
 
-<!-- REMARKS VIEW MODAL -->
-<div class="modal-overlay" id="modal-remarks">
+<!-- APPLICATION VIEW MODAL -->
+<div class="modal-overlay" id="modal-view-application">
   <div class="modal">
-    <button class="modal-close" onclick="closeModal('modal-remarks')">✕</button>
-    <div class="modal-title">Application Remarks</div>
-    <p id="remarksText" style="color:var(--text-muted);line-height:1.6;"></p>
+    <button class="modal-close" onclick="closeModal('modal-view-application')">✕</button>
+    <div class="modal-title">Loan Application Details</div>
+    <div class="details-grid" style="gap:12px; margin-top:12px;">
+      <div><strong>Application ID:</strong> <span id="detailAppId"></span></div>
+      <div><strong>Loan ID:</strong> <span id="detailLoanId"></span></div>
+      <div><strong>Member Name:</strong> <span id="detailMemberName"></span></div>
+      <div><strong>Member ID:</strong> <span id="detailMemberId"></span></div>
+      <div><strong>Loan Type:</strong> <span id="detailLoanType"></span></div>
+      <div><strong>Date Applied:</strong> <span id="detailDateApplied"></span></div>
+      <div><strong>Date Decision:</strong> <span id="detailDateDecision"></span></div>
+      <div><strong>Status:</strong> <span id="detailStatus"></span></div>
+      <div style="grid-column:1/-1;"><strong>Remarks:</strong> <span id="detailRemarks"></span></div>
+    </div>
     <div class="modal-footer">
-      <button class="btn btn-primary" onclick="closeModal('modal-remarks')">Close</button>
+      <button class="btn btn-primary" onclick="closeModal('modal-view-application')">Close</button>
     </div>
   </div>
 </div>
@@ -233,9 +254,28 @@ function approveApp(id, action) {
   document.getElementById('actionBtn').textContent = action === 'approved' ? 'Approve' : 'Reject';
   openModal('modal-action');
 }
-function viewRemarks(text) {
-  document.getElementById('remarksText').textContent = text;
-  openModal('modal-remarks');
+function viewApplication(button) {
+  const appId = button.dataset.appId || 'N/A';
+  const loanId = button.dataset.loanId || 'N/A';
+  const memberName = button.dataset.memberName || 'N/A';
+  const memberId = button.dataset.memberId || 'N/A';
+  const loanType = button.dataset.loanType || 'N/A';
+  const dateApplied = button.dataset.dateApplied || 'N/A';
+  const dateDecision = button.dataset.dateDecision || 'Pending';
+  const status = button.dataset.status || 'N/A';
+  const remarks = button.dataset.remarks || 'N/A';
+
+  document.getElementById('detailAppId').textContent = appId;
+  document.getElementById('detailLoanId').textContent = loanId === '' ? 'N/A' : loanId;
+  document.getElementById('detailMemberName').textContent = memberName;
+  document.getElementById('detailMemberId').textContent = memberId;
+  document.getElementById('detailLoanType').textContent = loanType;
+  document.getElementById('detailDateApplied').textContent = dateApplied;
+  document.getElementById('detailDateDecision').textContent = dateDecision === '' ? 'Pending' : dateDecision;
+  document.getElementById('detailStatus').textContent = status;
+  document.getElementById('detailRemarks').textContent = remarks;
+
+  openModal('modal-view-application');
 }
 </script>
 </body>

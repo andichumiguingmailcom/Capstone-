@@ -30,6 +30,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $total += ((int)($qtys[$i] ?? 0)) * ((float)($prices[$i] ?? 0));
         }
 
+        // Calculate interest for credit payments
+        $creditMonths = 0;
+        $interestRate = 0;
+        if ($payType === 'credit') {
+            $creditMonths = (int)($_POST['credit_months'] ?? 1);
+            // Interest rates based on months (progressive rates)
+            $interestRates = [1 => 5, 2 => 8, 3 => 12, 6 => 20, 12 => 30];
+            $interestRate = $interestRates[$creditMonths] ?? 5;
+            $interestAmount = $total * ($interestRate / 100);
+            $total += $interestAmount;
+        }
+
         $stmt = $db->prepare("INSERT INTO sales (member_id, sale_date, total, payment_type, recorded_by) VALUES (?, ?, ?, ?, ?)");
         $stmt->bind_param('isdsi', $memberId, $saleDate, $total, $payType, $uid);
         $stmt->execute();
@@ -69,7 +81,9 @@ $monthTotal = $db->query("SELECT SUM(total) as s FROM sales WHERE MONTH(sale_dat
   <div class="topbar">
     <div class="topbar-title">Sales Recording</div>
     <div class="topbar-actions">
-      <button class="btn btn-primary" onclick="openModal('modal-add-sale')">+ Record Sale</button>
+      <button class="btn btn-primary btn-large" onclick="openModal('modal-add-sale')" style="font-size: 1.1rem; padding: 12px 24px; font-weight: 600;">
+        🛒 Record New Sale
+      </button>
     </div>
   </div>
 
@@ -130,9 +144,28 @@ $monthTotal = $db->query("SELECT SUM(total) as s FROM sales WHERE MONTH(sale_dat
         </div>
         <div class="form-group">
           <label class="form-label">Payment Type</label>
-          <select name="payment_type" class="form-control" required>
+          <select name="payment_type" class="form-control" id="paymentType" required onchange="toggleCreditFields()">
             <option value="cash">Cash</option><option value="credit">Credit</option>
           </select>
+        </div>
+      </div>
+      <div class="form-group" id="creditFields" style="display:none;">
+        <label class="form-label">Credit Terms</label>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" style="font-size:0.78rem;">Months to Pay</label>
+            <select name="credit_months" class="form-control" id="creditMonths" onchange="calcTotal()">
+              <option value="1">1 month (5% interest)</option>
+              <option value="2">2 months (8% interest)</option>
+              <option value="3">3 months (12% interest)</option>
+              <option value="6">6 months (20% interest)</option>
+              <option value="12">12 months (30% interest)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" style="font-size:0.78rem;">Monthly Payment</label>
+            <input type="text" id="monthlyPayment" class="form-control" readonly>
+          </div>
         </div>
       </div>
       <div class="form-group">
@@ -169,7 +202,9 @@ $monthTotal = $db->query("SELECT SUM(total) as s FROM sales WHERE MONTH(sale_dat
 
       <div class="modal-footer">
         <button type="button" class="btn btn-ghost" onclick="closeModal('modal-add-sale')">Cancel</button>
-        <button type="submit" class="btn btn-primary">Record Sale</button>
+        <button type="submit" class="btn btn-primary btn-large" style="font-size: 1.1rem; padding: 12px 24px; font-weight: 600;">
+          ✅ Record Sale
+        </button>
       </div>
     </form>
   </div>
@@ -193,9 +228,38 @@ function fillPrice(sel) {
 function calcTotal() {
   const qtys = document.querySelectorAll('input[name="qtys[]"]');
   const prices = document.querySelectorAll('input[name="prices[]"]');
-  let total = 0;
-  qtys.forEach((q, i) => { total += (parseFloat(q.value)||0) * (parseFloat(prices[i]?.value)||0); });
+  let subtotal = 0;
+  qtys.forEach((q, i) => { subtotal += (parseFloat(q.value)||0) * (parseFloat(prices[i]?.value)||0); });
+
+  const paymentType = document.getElementById('paymentType').value;
+  let total = subtotal;
+  let monthlyPayment = 0;
+
+  if (paymentType === 'credit') {
+    const creditMonths = parseInt(document.getElementById('creditMonths').value) || 1;
+    const interestRates = {1: 5, 2: 8, 3: 12, 6: 20, 12: 30};
+    const interestRate = interestRates[creditMonths] || 5;
+    const interestAmount = subtotal * (interestRate / 100);
+    total = subtotal + interestAmount;
+    monthlyPayment = total / creditMonths;
+    document.getElementById('monthlyPayment').value = '₱' + monthlyPayment.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  } else {
+    document.getElementById('monthlyPayment').value = '';
+  }
+
   document.getElementById('grandTotal').textContent = '₱' + total.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+function toggleCreditFields() {
+  const paymentType = document.getElementById('paymentType').value;
+  const creditFields = document.getElementById('creditFields');
+  if (paymentType === 'credit') {
+    creditFields.style.display = 'block';
+    calcTotal(); // Recalculate when showing credit fields
+  } else {
+    creditFields.style.display = 'none';
+    calcTotal(); // Recalculate when hiding credit fields
+  }
 }
 
 function addItem() {

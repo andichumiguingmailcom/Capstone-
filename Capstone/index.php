@@ -66,7 +66,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       </div>
       <div class="form-group">
         <label class="form-label">Password</label>
-        <input type="password" name="password" class="form-control" placeholder="Enter password" required autocomplete="current-password">
+        <div style="position:relative;">
+          <input type="password" name="password" id="adminPassword" class="form-control" placeholder="Enter password" required autocomplete="current-password">
+          <button type="button" class="btn-password-toggle" onclick="togglePasswordVisibility('adminPassword')" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1.2rem;padding:0;color:var(--text-muted);">
+            <span id="adminPasswordIcon">👁️</span>
+          </button>
+        </div>
       </div>
 
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
@@ -95,6 +100,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
   </div>
 </div>
+
+<script>
+function togglePasswordVisibility(fieldId) {
+  const field = document.getElementById(fieldId);
+  const icon = document.getElementById(fieldId + 'Icon');
+  if (field.type === 'password') {
+    field.type = 'text';
+    icon.textContent = '👁️‍🗨️';
+  } else {
+    field.type = 'password';
+    icon.textContent = '👁️';
+  }
+}
+</script>
 
 </body>
 </html>

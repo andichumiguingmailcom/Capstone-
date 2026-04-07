@@ -63,7 +63,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       </div>
       <div class="form-group">
         <label class="form-label">PIN (last 4 digits of phone)</label>
-        <input type="password" name="pin" class="form-control" maxlength="4" placeholder="••••" required>
+        <div style="position:relative;">
+          <input type="password" name="pin" id="memberPin" class="form-control" maxlength="4" placeholder="••••" required>
+          <button type="button" class="btn-password-toggle" onclick="togglePasswordVisibility('memberPin')" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1.2rem;padding:0;color:var(--text-muted);">
+            <span id="memberPinIcon">👁️</span>
+          </button>
+        </div>
       </div>
       <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;padding:12px;">
         Enter Portal →
@@ -81,6 +86,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
   </div>
 </div>
+
+<script>
+function togglePasswordVisibility(fieldId) {
+  const field = document.getElementById(fieldId);
+  const icon = document.getElementById(fieldId + 'Icon');
+  if (field.type === 'password') {
+    field.type = 'text';
+    icon.textContent = '👁️‍🗨️';
+  } else {
+    field.type = 'password';
+    icon.textContent = '👁️';
+  }
+}
+</script>
 
 </body>
 </html>

@@ -23,6 +23,9 @@ $user = getCurrentUser();
     <a href="member_loan_payment.php" class="nav-item <?= ($activePage??'') === 'payment' ? 'active' : '' ?>">
       <span class="nav-icon">💰</span> Make Payment
     </a>
+    <a href="member_capital_share.php" class="nav-item <?= ($activePage??'') === 'capital_share' ? 'active' : '' ?>">
+      <span class="nav-icon">💎</span> Capital Share
+    </a>
 
     <div class="nav-section-label">Purchases</div>
     <a href="member_purchases.php" class="nav-item <?= ($activePage??'') === 'purchases' ? 'active' : '' ?>">

@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Reports – CoopIMS</title>
   <link rel="stylesheet" href="../css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="js/theme-init.js"></script>
 </head>
 <body>
@@ -88,12 +89,15 @@ $totalPayments = $db->query("SELECT SUM(amount) as s FROM loan_payments WHERE DA
 
       <!-- LOANS TAB -->
       <div class="tab-pane active" id="tab-loans">
-        <div class="stats-grid">
-          <div class="stat-card green"><span class="stat-icon">📝</span><div class="stat-value"><?= $loanStats['total'] ?></div><div class="stat-label">Total Applications</div></div>
-          <div class="stat-card gold"><span class="stat-icon">⏳</span><div class="stat-value"><?= $loanStats['pending'] ?></div><div class="stat-label">Pending</div></div>
-          <div class="stat-card blue"><span class="stat-icon">✅</span><div class="stat-value"><?= $loanStats['approved'] ?></div><div class="stat-label">Approved / Disbursed</div></div>
-          <div class="stat-card red"><span class="stat-icon">❌</span><div class="stat-value"><?= $loanStats['rejected'] ?></div><div class="stat-label">Rejected</div></div>
-          <div class="stat-card green"><span class="stat-icon">💵</span><div class="stat-value">₱<?= number_format($loanStats['total_amount'] ?? 0, 0) ?></div><div class="stat-label">Total Amount Applied</div></div>
+        <div class="card" style="margin-bottom: 20px;">
+          <div class="card-header">
+            <span class="card-title">Loan Applications Analytics (<?= $from ?> to <?= $to ?>)</span>
+          </div>
+          <div class="card-body">
+            <div style="height: 400px;">
+              <canvas id="loansChart"></canvas>
+            </div>
+          </div>
         </div>
         <div class="card">
           <div class="card-header"><span class="card-title">Consolidated Loan Report (<?= $from ?> to <?= $to ?>)</span></div>
@@ -128,11 +132,15 @@ $totalPayments = $db->query("SELECT SUM(amount) as s FROM loan_payments WHERE DA
 
       <!-- SALES TAB -->
       <div class="tab-pane" id="tab-sales">
-        <div class="stats-grid">
-          <div class="stat-card green"><span class="stat-icon">💰</span><div class="stat-value">₱<?= number_format($salesStats['gross_sales'] ?? 0, 0) ?></div><div class="stat-label">Gross Sales</div></div>
-          <div class="stat-card blue"><span class="stat-icon">💵</span><div class="stat-value">₱<?= number_format($salesStats['cash_sales'] ?? 0, 0) ?></div><div class="stat-label">Cash Sales</div></div>
-          <div class="stat-card gold"><span class="stat-icon">📋</span><div class="stat-value">₱<?= number_format($salesStats['credit_sales'] ?? 0, 0) ?></div><div class="stat-label">Credit Sales</div></div>
-          <div class="stat-card green"><span class="stat-icon">🧾</span><div class="stat-value"><?= $salesStats['total_txn'] ?></div><div class="stat-label">Transactions</div></div>
+        <div class="card" style="margin-bottom: 20px;">
+          <div class="card-header">
+            <span class="card-title">Sales Analytics (<?= $from ?> to <?= $to ?>)</span>
+          </div>
+          <div class="card-body">
+            <div style="height: 400px;">
+              <canvas id="salesChart"></canvas>
+            </div>
+          </div>
         </div>
         <div class="card">
           <div class="card-header"><span class="card-title">Top Selling Products</span></div>
@@ -158,9 +166,15 @@ $totalPayments = $db->query("SELECT SUM(amount) as s FROM loan_payments WHERE DA
 
       <!-- PAYMENTS TAB -->
       <div class="tab-pane" id="tab-payments">
-        <div class="stats-grid">
-          <div class="stat-card green"><span class="stat-icon">💰</span><div class="stat-value">₱<?= number_format($totalPayments, 2) ?></div><div class="stat-label">Total Payments Collected</div></div>
-          <div class="stat-card blue"><span class="stat-icon">📱</span><div class="stat-value"><?= $db->query("SELECT COUNT(*) as c FROM loan_payments WHERE DATE(paid_at) BETWEEN '$from' AND '$to'")->fetch_assoc()['c'] ?></div><div class="stat-label">Payment Transactions</div></div>
+        <div class="card" style="margin-bottom: 20px;">
+          <div class="card-header">
+            <span class="card-title">Payment Analytics (<?= $from ?> to <?= $to ?>)</span>
+          </div>
+          <div class="card-body">
+            <div style="height: 400px;">
+              <canvas id="paymentsChart"></canvas>
+            </div>
+          </div>
         </div>
         <div class="card">
           <div class="card-header"><span class="card-title">Payment Records</span></div>
@@ -189,5 +203,129 @@ $totalPayments = $db->query("SELECT SUM(amount) as s FROM loan_payments WHERE DA
 </div>
 
 <script src="../js/app.js"></script>
+<script>
+// Initialize charts when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    // Loans Chart
+    const loansCtx = document.getElementById('loansChart').getContext('2d');
+    new Chart(loansCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Pending', 'Approved/Disbursed', 'Rejected'],
+            datasets: [{
+                data: [<?= $loanStats['pending'] ?>, <?= $loanStats['approved'] ?>, <?= $loanStats['rejected'] ?>],
+                backgroundColor: ['#f59e0b', '#3b82f6', '#ef4444'],
+                borderWidth: 2,
+                borderColor: '#ffffff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 20,
+                        usePointStyle: true
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = ((context.parsed / total) * 100).toFixed(1);
+                            return context.label + ': ' + context.parsed + ' (' + percentage + '%)';
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Sales Chart
+    const salesCtx = document.getElementById('salesChart').getContext('2d');
+    new Chart(salesCtx, {
+        type: 'bar',
+        data: {
+            labels: ['Cash Sales', 'Credit Sales'],
+            datasets: [{
+                label: 'Sales Amount (₱)',
+                data: [<?= $salesStats['cash_sales'] ?? 0 ?>, <?= $salesStats['credit_sales'] ?? 0 ?>],
+                backgroundColor: ['#10b981', '#f59e0b'],
+                borderColor: ['#059669', '#d97706'],
+                borderWidth: 2,
+                borderRadius: 8,
+                borderSkipped: false
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '₱' + value.toLocaleString();
+                        }
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return '₱' + context.parsed.y.toLocaleString();
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Payments Chart
+    const paymentsCtx = document.getElementById('paymentsChart').getContext('2d');
+    const paymentCount = <?= $db->query("SELECT COUNT(*) as c FROM loan_payments WHERE DATE(paid_at) BETWEEN '$from' AND '$to'")->fetch_assoc()['c'] ?>;
+    new Chart(paymentsCtx, {
+        type: 'pie',
+        data: {
+            labels: ['Total Amount Collected', 'Number of Transactions'],
+            datasets: [{
+                data: [<?= $totalPayments ?>, paymentCount],
+                backgroundColor: ['#8b5cf6', '#06b6d4'],
+                borderWidth: 2,
+                borderColor: '#ffffff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 20,
+                        usePointStyle: true
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            if (context.dataIndex === 0) {
+                                return '₱' + context.parsed.toLocaleString();
+                            }
+                            return context.parsed + ' transactions';
+                        }
+                    }
+                }
+            }
+        }
+    });
+});
+</script>
 </body>
 </html>

@@ -27,23 +27,57 @@ if (!$member) {
 
 // If viewing documents section, display documents only
 if ($section === 'documents') {
-    $documents = $db->query("SELECT * FROM documents WHERE member_id=$id ORDER BY uploaded_at DESC");
+    // Get regular documents
+    $documents = $db->query("SELECT 'member' as source, doc_type, filename, filepath, uploaded_at FROM documents WHERE member_id=$id ORDER BY uploaded_at DESC");
     
-    if ($documents && $documents->num_rows > 0) {
+    // Get pre-application documents by matching member details to pre_application
+    $preAppDocs = $db->query("SELECT 'pre_app' as source, doc_type, filename, filepath, uploaded_at FROM pre_application_documents WHERE pre_application_id IN (
+        SELECT id FROM pre_applications WHERE 
+        first_name='" . $db->real_escape_string($member['first_name']) . "' AND 
+        last_name='" . $db->real_escape_string($member['last_name']) . "' AND 
+        email='" . $db->real_escape_string($member['email']) . "'
+    ) ORDER BY uploaded_at DESC");
+    
+    // Combine results
+    $allDocs = [];
+    if ($documents) {
+        while ($doc = $documents->fetch_assoc()) {
+            $allDocs[] = $doc;
+        }
+    }
+    if ($preAppDocs) {
+        while ($doc = $preAppDocs->fetch_assoc()) {
+            $allDocs[] = $doc;
+        }
+    }
+    
+    // Sort by upload date descending
+    usort($allDocs, function($a, $b) {
+        return strtotime($b['uploaded_at']) - strtotime($a['uploaded_at']);
+    });
+    
+    if (count($allDocs) > 0) {
         echo '<div style="padding: 20px;">';
         echo '<div class="table-wrap"><table>';
-        echo '<thead><tr><th>Type</th><th>File</th><th>Uploaded</th><th>Action</th></tr></thead>';
+        echo '<thead><tr><th>Type</th><th>File</th><th>Source</th><th>Uploaded</th><th>Action</th></tr></thead>';
         echo '<tbody>';
         
-        while ($doc = $documents->fetch_assoc()) {
-            $fileLink = htmlspecialchars($doc['filepath']);
+        foreach ($allDocs as $doc) {
+            // Construct correct file path as absolute URL from web root
+            if ($doc['source'] === 'pre_app') {
+                $fileLink = '/Capstone-/Capstone/uploads/pre_applications/' . htmlspecialchars($doc['filename']);
+            } else {
+                $fileLink = '/Capstone-/Capstone/uploads/docs/' . htmlspecialchars($doc['filename']);
+            }
             $fileName = htmlspecialchars($doc['filename']);
             $docType = htmlspecialchars($doc['doc_type'] ?? 'Document');
+            $source = $doc['source'] === 'pre_app' ? 'Pre-Application' : 'Member';
             $uploadDate = date('M j, Y', strtotime($doc['uploaded_at']));
             
             echo "<tr>";
             echo "<td class='fw-600'>$docType</td>";
             echo "<td>$fileName</td>";
+            echo "<td><span class='badge " . ($doc['source'] === 'pre_app' ? 'badge-blue' : 'badge-green') . "'>$source</span></td>";
             echo "<td class='text-muted text-sm'>$uploadDate</td>";
             echo "<td><a href='$fileLink' target='_blank' class='btn btn-sm btn-outline'>View</a></td>";
             echo "</tr>";

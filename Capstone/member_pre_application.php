@@ -83,18 +83,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $brgy   = clean($_POST['barangay'] ?? '');
     $city   = clean($_POST['city'] ?? '');
     $prov   = clean($_POST['province'] ?? '');
+    $initialCapital = (float)($_POST['initial_capital'] ?? 5000);
 
     // Required ID upload
     $idDoc = $_FILES['id_document'] ?? null;
 
     if (!$fname || !$lname || !$email || !$phone) {
         $msg = 'Please fill in all required fields.';
+    } elseif ($initialCapital < 5000) {
+        $msg = 'Initial capital share must be at least ₱5,000.';
     } elseif (!$idDoc || $idDoc['error'] !== UPLOAD_ERR_OK) {
         $msg = 'Please upload a valid ID document.';
     } else {
         $db = getDB();
-        $stmt = $db->prepare("INSERT INTO pre_applications (first_name, middle_name, last_name, email, phone, street, barangay, city, province) VALUES (?,?,?,?,?,?,?,?,?)");
-        $stmt->bind_param('sssssssss', $fname, $mname, $lname, $email, $phone, $street, $brgy, $city, $prov);
+        $stmt = $db->prepare("INSERT INTO pre_applications (first_name, middle_name, last_name, email, phone, street, barangay, city, province, initial_capital) VALUES (?,?,?,?,?,?,?,?,?,?)");
+        $stmt->bind_param('sssssssssd', $fname, $mname, $lname, $email, $phone, $street, $brgy, $city, $prov, $initialCapital);
         $stmt->execute();
         $appId = $db->insert_id;
 
@@ -238,6 +241,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <div class="form-row">
             <div class="form-group"><label class="form-label">City/Municipality</label><input type="text" name="city" class="form-control"></div>
             <div class="form-group"><label class="form-label">Province</label><input type="text" name="province" class="form-control"></div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Initial Capital Share (₱) <span style="color:var(--danger);">*</span></label>
+            <input type="number" name="initial_capital" class="form-control" min="5000" step="100" value="5000" required>
+            <small class="text-muted">Minimum contribution: ₱5,000</small>
           </div>
 
           <div class="form-group">

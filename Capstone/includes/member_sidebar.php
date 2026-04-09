@@ -24,6 +24,11 @@ $user = getCurrentUser();
       <span class="nav-icon">💰</span> Make Payment
     </a>
 
+    <div class="nav-section-label">Shares</div>
+    <a href="member_capital_shares.php" class="nav-item <?= ($activePage??'') === 'capital_shares' ? 'active' : '' ?>">
+      <span class="nav-icon">📈</span> Capital Shares
+    </a>
+
     <div class="nav-section-label">Purchases</div>
     <a href="member_purchases.php" class="nav-item <?= ($activePage??'') === 'purchases' ? 'active' : '' ?>">
       <span class="nav-icon">🛒</span> Purchase History

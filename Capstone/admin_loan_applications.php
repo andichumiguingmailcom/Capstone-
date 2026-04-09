@@ -27,10 +27,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // If approved, create loan record
         if ($action === 'approved') {
-            $app = $db->query("SELECT la.*, lt.interest FROM loan_applications la 
+            $app = $db->query("SELECT la.*, lt.type_name, lt.interest FROM loan_applications la 
                                JOIN loan_types lt ON la.loan_type_id = lt.id WHERE la.id=$id")->fetch_assoc();
             if ($app) {
-                $total_interest_factor = ($app['interest'] / 100) * $app['term_months'];
+                // Get member's capital share to determine actual interest rate
+                $capitalShare = $db->query("SELECT COALESCE(amount, 0) as amount FROM capital_shares WHERE member_id={$app['member_id']}")->fetch_assoc()['amount'] ?? 0;
+                
+                // Calculate actual interest rate based on loan type and capital share
+                $interestRate = $app['interest'];
+                if ($app['type_name'] === 'Regular Loan') {
+                    $interestRate = 3.0;
+                } elseif ($app['type_name'] === 'Special Loan') {
+                    $interestRate = $capitalShare >= 75001 ? 1.5 : 2.0;
+                } elseif ($app['type_name'] === 'Spring Board Loan') {
+                    $interestRate = $capitalShare >= 75001 ? 1.5 : 2.5;
+                }
+                
+                $total_interest_factor = ($interestRate / 100) * $app['term_months'];
                 $monthly = round($app['amount'] * (1 + $total_interest_factor) / $app['term_months'], 2);
                 $due = date('Y-m-d', strtotime('+1 month'));
                 $db->query("INSERT INTO loans (application_id, member_id, principal, balance, monthly_due, due_date) 

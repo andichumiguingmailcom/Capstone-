@@ -17,6 +17,21 @@ $db = getDB();
 $memberId = $_SESSION['member_id'] ?? 0;
 $msg = ''; $msgType = 'green';
 
+// Get member's capital share
+$memberCapitalShare = $db->query("SELECT COALESCE(amount, 0) as amount FROM capital_shares WHERE member_id=$memberId")->fetch_assoc()['amount'] ?? 0;
+
+// Function to calculate interest rate based on loan type and capital share
+function getInterestRate($loanTypeName, $capitalShare) {
+    if ($loanTypeName === 'Regular Loan') {
+        return 3.0;
+    } elseif ($loanTypeName === 'Special Loan') {
+        return $capitalShare >= 75001 ? 1.5 : 2.0;
+    } elseif ($loanTypeName === 'Spring Board Loan') {
+        return $capitalShare >= 75001 ? 1.5 : 2.5;
+    }
+    return 1.5;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $loanTypeId  = (int)$_POST['loan_type_id'];
     $amount      = (float)$_POST['amount'];
@@ -59,13 +74,22 @@ $myApps = $db->query("SELECT la.*, lt.type_name FROM loan_applications la
       <!-- LOAN TYPES INFO -->
       <div>
         <h3 style="font-family:'Syne',sans-serif;margin-bottom:16px;color:var(--primary-dark);">Available Loan Types</h3>
-        <?php while ($lt = $loanTypes->fetch_assoc()): ?>
-          <div class="card" style="margin-bottom:12px;cursor:pointer;" onclick="selectLoan(<?= $lt['id'] ?>, '<?= addslashes($lt['type_name']) ?>', <?= $lt['max_amount'] ?>, <?= $lt['max_months'] ?>)">
+        <div style="background: var(--bg-light); padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; border-left: 3px solid var(--primary);">
+          <div class="text-muted text-sm">💡 Your Capital Share: <strong style="color: var(--primary);">₱<?= number_format($memberCapitalShare, 2) ?></strong></div>
+        </div>
+        <?php $loanTypes->data_seek(0); while ($lt = $loanTypes->fetch_assoc()): 
+          $interestRate = getInterestRate($lt['type_name'], $memberCapitalShare);
+          $rateNote = '';
+          if ($lt['type_name'] === 'Special Loan' || $lt['type_name'] === 'Spring Board Loan') {
+            $rateNote = $memberCapitalShare >= 75001 ? ' (Platinum Member Rate)' : ' (Standard Rate)';
+          }
+        ?>
+          <div class="card" style="margin-bottom:12px;cursor:pointer;" onclick="selectLoan(<?= $lt['id'] ?>, '<?= addslashes($lt['type_name']) ?>', <?= $lt['max_amount'] ?>, <?= $lt['max_months'] ?>, <?= $interestRate ?>)">
             <div class="card-body" style="padding:16px 20px;">
               <div style="display:flex;justify-content:space-between;align-items:center;">
                 <div>
                   <div class="fw-600"><?= htmlspecialchars($lt['type_name']) ?></div>
-                  <div class="text-muted text-sm"><?= $lt['interest'] ?>% interest/month · up to <?= $lt['max_months'] ?> months</div>
+                  <div class="text-muted text-sm"><?= $interestRate ?>% interest/month · up to <?= $lt['max_months'] ?> months<?= $rateNote ?></div>
                 </div>
                 <div style="text-align:right;">
                   <div class="fw-600" style="color:var(--primary);">₱<?= number_format($lt['max_amount'], 0) ?></div>
@@ -91,9 +115,10 @@ $myApps = $db->query("SELECT la.*, lt.type_name FROM loan_applications la
                   $db->query("SELECT 1"); // reset
                   $lt2 = $db->query("SELECT * FROM loan_types ORDER BY type_name");
                   while ($lt = $lt2->fetch_assoc()):
+                    $interestRate = getInterestRate($lt['type_name'], $memberCapitalShare);
                   ?>
-                    <option value="<?= $lt['id'] ?>" data-max="<?= $lt['max_amount'] ?>" data-months="<?= $lt['max_months'] ?>" data-interest="<?= $lt['interest'] ?>">
-                      <?= htmlspecialchars($lt['type_name']) ?>
+                    <option value="<?= $lt['id'] ?>" data-max="<?= $lt['max_amount'] ?>" data-months="<?= $lt['max_months'] ?>" data-interest="<?= $interestRate ?>">
+                      <?= htmlspecialchars($lt['type_name']) ?> - <?= $interestRate ?>%
                     </option>
                   <?php endwhile; ?>
                 </select>
@@ -156,7 +181,7 @@ $myApps = $db->query("SELECT la.*, lt.type_name FROM loan_applications la
 
 <script src="js/app.js"></script>
 <script>
-function selectLoan(id, name, maxAmt, maxMonths) {
+function selectLoan(id, name, maxAmt, maxMonths, interest) {
   document.getElementById('loanTypeSelect').value = id;
   const opt = document.querySelector(`#loanTypeSelect option[value="${id}"]`);
   updateLimits(opt);

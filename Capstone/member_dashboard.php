@@ -28,7 +28,8 @@ $activeLoans = $db->query("SELECT l.*, lt.type_name FROM loans l
 $totalBalance  = $db->query("SELECT SUM(balance) as s FROM loans WHERE member_id=$memberId AND status='active'")->fetch_assoc()['s'] ?? 0;
 $totalPurchases= $db->query("SELECT COUNT(*) as c FROM sales WHERE member_id=$memberId")->fetch_assoc()['c'];
 $pendingApps   = $db->query("SELECT COUNT(*) as c FROM loan_applications WHERE member_id=$memberId AND status='pending'")->fetch_assoc()['c'];
-
+// Capital shares
+$capitalShare = $db->query("SELECT amount FROM capital_shares WHERE member_id=$memberId")->fetch_assoc()['amount'] ?? 0;
 // Recent purchases
 $recentPurchases = $db->query("SELECT s.*, GROUP_CONCAT(p.name SEPARATOR ', ') as items 
     FROM sales s LEFT JOIN sale_items si ON s.id=si.sale_id LEFT JOIN products p ON si.product_id=p.id
@@ -67,7 +68,7 @@ $recentPayments = $db->query("SELECT lp.* FROM loan_payments lp
     </div>
 
     <!-- STATS -->
-    <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);">
+    <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);">
       <div class="stat-card blue">
         <span class="stat-icon">💳</span>
         <div class="stat-value">₱<?= number_format($totalBalance, 0) ?></div>
@@ -80,6 +81,12 @@ $recentPayments = $db->query("SELECT lp.* FROM loan_payments lp
         <div class="stat-change"><a href="member_loans.php" style="color:inherit;">View status →</a></div>
       </div>
       <div class="stat-card green">
+        <span class="stat-icon">📈</span>
+        <div class="stat-value">₱<?= number_format($capitalShare, 0) ?></div>
+        <div class="stat-label">Capital Shares</div>
+        <div class="stat-change"><a href="member_capital_shares.php" style="color:inherit;">View details →</a></div>
+      </div>
+      <div class="stat-card purple">
         <span class="stat-icon">🛒</span>
         <div class="stat-value"><?= $totalPurchases ?></div>
         <div class="stat-label">Total Purchases</div>

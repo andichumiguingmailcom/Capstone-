@@ -51,13 +51,21 @@ CREATE TABLE IF NOT EXISTS pre_applications (
     barangay        VARCHAR(100),
     city            VARCHAR(100),
     province        VARCHAR(100),
+    initial_capital DECIMAL(12,2) NOT NULL DEFAULT 5000.00,
     submitted_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
     status          ENUM('pending','approved','rejected') DEFAULT 'pending',
     verified_at     DATETIME,
     admin_notes     TEXT
 );
 
+-- Add initial_capital column if it doesn't exist
+ALTER TABLE pre_applications ADD COLUMN IF NOT EXISTS initial_capital DECIMAL(12,2) NOT NULL DEFAULT 5000.00;
+
 -- ── LOAN TYPES ──
+-- Note: Interest rates in loan_types table are base rates. Actual rates are calculated per member in PHP:
+-- 1. Regular Loan: Fixed 3% interest, 12 months max
+-- 2. Special Loan: 2% interest (capital < ₱75,001) or 1.5% (capital ≥ ₱75,001), 12 months max
+-- 3. Spring Board Loan: 2.5% interest (capital < ₱75,001) or 1.5% (capital ≥ ₱75,001), 4 months max
 CREATE TABLE IF NOT EXISTS loan_types (
     id          INT AUTO_INCREMENT PRIMARY KEY,
     type_name   VARCHAR(80) NOT NULL,
@@ -112,6 +120,19 @@ CREATE TABLE IF NOT EXISTS loan_payments (
     recorded_by     INT,
     FOREIGN KEY (loan_id) REFERENCES loans(id),
     FOREIGN KEY (recorded_by) REFERENCES users(id)
+);
+
+-- ── DOCUMENTS ──
+CREATE TABLE IF NOT EXISTS documents (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    member_id   INT NOT NULL,
+    doc_type    VARCHAR(80) NOT NULL,
+    filename    VARCHAR(255) NOT NULL,
+    filepath    VARCHAR(255) NOT NULL,
+    uploaded_by INT,
+    uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (member_id) REFERENCES members(id),
+    FOREIGN KEY (uploaded_by) REFERENCES users(id)
 );
 
 -- ── PRE-APPLICATION DOCUMENTS ──
@@ -177,17 +198,15 @@ CREATE TABLE IF NOT EXISTS sale_items (
     FOREIGN KEY (product_id) REFERENCES products(id)
 );
 
--- ── DOCUMENTS ──
-CREATE TABLE IF NOT EXISTS documents (
-    id          INT AUTO_INCREMENT PRIMARY KEY,
-    member_id   INT NOT NULL,
-    doc_type    VARCHAR(80),
-    filename    VARCHAR(200),
-    filepath    VARCHAR(255),
-    uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    uploaded_by INT,
+-- ── CAPITAL SHARES ──
+CREATE TABLE IF NOT EXISTS capital_shares (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    member_id       INT NOT NULL,
+    amount          DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+    updated_at      DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    updated_by      INT,
     FOREIGN KEY (member_id) REFERENCES members(id),
-    FOREIGN KEY (uploaded_by) REFERENCES users(id)
+    FOREIGN KEY (updated_by) REFERENCES users(id)
 );
 
 -- ── AUDIT LOG ──
@@ -204,14 +223,13 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 
 -- ── SEED DATA ──
 INSERT IGNORE INTO users (username, password, first_name, last_name, role) VALUES
-('admin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'System', 'Administrator', 'admin'),
+('admin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'System', 'Administrator', 'general_manager'),
 ('staff1', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Maria', 'Santos', 'staff');
 
 INSERT IGNORE INTO loan_types (type_name, max_amount, interest, penalty_rate, max_months) VALUES
-('Emergency Loan', 10000.00, 2.5, 5.00, 6),
-('Regular Loan', 50000.00, 1.5, 2.00, 24),
-('Educational Loan', 30000.00, 1.0, 2.00, 12),
-('Business Loan', 100000.00, 2.0, 3.00, 36);
+('Regular Loan', 50000.00, 3.0, 2.00, 12),
+('Special Loan', 75000.00, 1.5, 2.00, 12),
+('Spring Board Loan', 30000.00, 1.5, 2.00, 4);
 
 INSERT IGNORE INTO members (member_id, first_name, last_name, email, phone, date_joined, status) VALUES
 ('MEM-001', 'Juan', 'dela Cruz', 'juan@email.com', '09171234567', '2022-01-15', 'active'),

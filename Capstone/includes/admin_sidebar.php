@@ -22,6 +22,11 @@ $user = getCurrentUser();
       <span class="nav-icon">👥</span> Member List
     </a>
     <?php endif; ?>
+    <?php if (in_array($user['role'], ['general_manager','book_keeper'], true)): ?>
+    <a href="admin_capital_shares.php" class="nav-item <?= ($activePage??'') === 'capital_shares' ? 'active' : '' ?>">
+      <span class="nav-icon">💰</span> Capital Shares
+    </a>
+    <?php endif; ?>
     <?php if (in_array($user['role'], ['general_manager','loan_officer'], true)): ?>
     <a href="admin_pre_applications.php" class="nav-item <?= ($activePage??'') === 'pre_apps' ? 'active' : '' ?>">
       <span class="nav-icon">📋</span> Pre-Applications

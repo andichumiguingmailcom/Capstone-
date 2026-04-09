@@ -36,7 +36,10 @@ $activePage = 'pre_apps';
 $db = getDB();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $id = (int)$_POST['id']; $action = clean($_POST['action']); $notes = clean($_POST['notes'] ?? '');
+    $id = (int)$_POST['id']; 
+    $action = clean($_POST['action'] ?? ''); 
+    $notes = clean($_POST['notes'] ?? '');
+
     if (in_array($action, ['approved','rejected'])) {
         // Fetch applicant details for notification before updating
         $stmt = $db->prepare("SELECT first_name, email FROM pre_applications WHERE id = ?");
@@ -44,18 +47,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute();
         $applicant = $stmt->get_result()->fetch_assoc();
 
-        $db->query("UPDATE pre_applications SET status='$action', admin_notes='$notes', verified_at=NOW() WHERE id=$id");
-
-        // If approved and user is general_manager, automatically add to members
-        if ($action === 'approved' && $_SESSION['role'] === 'general_manager') {
+        // If approved, automatically add to members
+        if ($action === 'approved') {
             $appData = $db->query("SELECT * FROM pre_applications WHERE id=$id")->fetch_assoc();
-            $memberId = 'MEM-' . str_pad($id, 4, '0', STR_PAD_LEFT);
+            $memberId = generateMemberID($db);
             $dateJoined = date('Y-m-d');
             $status = 'active';
             $stmt = $db->prepare("INSERT INTO members (member_id, first_name, middle_name, last_name, email, phone, street, barangay, city, province, date_joined, status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)");
             $stmt->bind_param('ssssssssssss', $memberId, $appData['first_name'], $appData['middle_name'], $appData['last_name'], $appData['email'], $appData['phone'], $appData['street'], $appData['barangay'], $appData['city'], $appData['province'], $dateJoined, $status);
             $stmt->execute();
+            $newMemberId = $db->insert_id;
+
+            // Create initial capital share record
+            $stmt = $db->prepare("INSERT INTO capital_shares (member_id, amount, updated_by) VALUES (?, ?, ?)");
+            $stmt->bind_param('idi', $newMemberId, $appData['initial_capital'], $_SESSION['user_id']);
+            $stmt->execute();
         }
+
+        // Update status in pre_applications table
+        $db->query("UPDATE pre_applications SET status='$action', admin_notes='$notes', verified_at=NOW() WHERE id=$id");
 
         // Send Email Notification via PHPMailer
         $emailError = '';
@@ -99,7 +109,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        $redirectMsg = "Application $action.";
+        $redirectMsg = "Application " . ($action === 'approved' ? 'approved and member record created' : 'rejected') . ".";
         if (!empty($emailError)) {
             $redirectMsg .= " (Email notification failed)";
         }
@@ -107,10 +117,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+/**
+ * Helper to generate unique Member IDs (MEM-001, MEM-002, etc.)
+ */
+function generateMemberID($db) {
+    $res = $db->query("SELECT member_id FROM members ORDER BY id DESC LIMIT 1");
+    if ($res && $res->num_rows > 0) {
+        $last = $res->fetch_assoc()['member_id'];
+        $num = (int)str_replace('MEM-', '', $last);
+        return 'MEM-' . str_pad($num + 1, 3, '0', STR_PAD_LEFT);
+    }
+    return 'MEM-001';
+}
+
 $msg = clean($_GET['msg'] ?? '');
 $apps = $db->query("SELECT *, 
     CONCAT_WS(' ', first_name, middle_name, last_name) as full_name,
-    CONCAT_WS(', ', street, barangay, city, province) as address FROM pre_applications ORDER BY submitted_at DESC");
+    CONCAT_WS(', ', street, barangay, city, province) as address FROM pre_applications WHERE status='pending' ORDER BY submitted_at DESC");
 ?>
 
 <?php include 'includes/admin_sidebar.php'; ?>
@@ -172,8 +195,9 @@ $apps = $db->query("SELECT *,
     <button class="modal-close" onclick="closeModal('modal-review')">✕</button>
     <div class="modal-title" id="reviewTitle">Review Application</div>
     <p id="reviewName" style="color:var(--text-muted);margin-bottom:16px;"></p>
-    <form method="POST">
+    <form method="POST" id="approvalForm">
       <input type="hidden" name="id" id="reviewId">
+      <input type="hidden" name="action" id="actionInput" value="">
       <div class="form-group">
         <label class="form-label">Admin Notes</label>
         <textarea name="notes" id="reviewNotes" class="form-control" rows="3" placeholder="Reason or notes (optional)..."></textarea>
@@ -193,6 +217,7 @@ function reviewApp(id, name, status, notes) {
   
   const notesField = document.getElementById('reviewNotes');
   const footer = document.getElementById('reviewFooter');
+  const form = document.getElementById('approvalForm');
   
   if (status === 'pending') {
     document.getElementById('reviewTitle').textContent = '📝 Review Application';
@@ -200,8 +225,8 @@ function reviewApp(id, name, status, notes) {
     notesField.readOnly = false;
     footer.innerHTML = `
       <button type="button" class="btn btn-ghost" onclick="closeModal('modal-review')">Cancel</button>
-      <button type="submit" name="action" value="rejected" class="btn btn-danger">Reject</button>
-      <button type="submit" name="action" value="approved" class="btn btn-primary">Approve</button>
+      <button type="button" class="btn btn-danger" onclick="submitApproval('rejected')">Reject</button>
+      <button type="button" class="btn btn-primary" onclick="submitApproval('approved')">Approve</button>
     `;
   } else {
     document.getElementById('reviewTitle').textContent = '📄 Application Reviewed';
@@ -210,6 +235,11 @@ function reviewApp(id, name, status, notes) {
     footer.innerHTML = `<button type="button" class="btn btn-primary" onclick="closeModal('modal-review')">Close</button>`;
   }
   openModal('modal-review');
+}
+
+function submitApproval(action) {
+  document.getElementById('actionInput').value = action;
+  document.getElementById('approvalForm').submit();
 }
 </script>
 </body>

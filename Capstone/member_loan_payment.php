@@ -123,10 +123,6 @@ while ($r = $myLoans->fetch_assoc()) $loans[] = $r;
                   <input type="radio" name="payment_method" value="cash" onchange="toggleQR('cash')" style="margin-right:4px;">
                   <span class="badge badge-green" style="padding:8px 14px;cursor:pointer;">💵 Cash</span>
                 </label>
-                <label style="flex:1;cursor:pointer;">
-                  <input type="radio" name="payment_method" value="bank" onchange="toggleQR('bank')" style="margin-right:4px;">
-                  <span class="badge badge-gray" style="padding:8px 14px;cursor:pointer;">🏦 Bank</span>
-                </label>
               </div>
             </div>
 

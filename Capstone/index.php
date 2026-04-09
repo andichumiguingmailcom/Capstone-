@@ -68,7 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $ip = $_SERVER['REMOTE_ADDR'];
             $db->query("INSERT INTO audit_logs (user_id, action, details, ip_address) VALUES ({$result['id']}, 'LOGIN', 'User logged in', '$ip')");
 
-            header('Location: admin_dashboard.php');
+            header('Location: Admin/admin_dashboard.php');
             exit;
         } else {
             $error = 'Invalid username or password.';

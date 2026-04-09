@@ -74,7 +74,7 @@ $user = getCurrentUser();
         <span class="nav-icon">🔍</span> Audit Logs
       </a>
     <?php endif; ?>
-    <a href="logout.php" class="nav-item" style="color:rgba(255,100,100,0.8);">
+    <a href="../logout.php" class="nav-item" style="color:rgba(255,100,100,0.8);">
       <span class="nav-icon">🚪</span> Logout
     </a>
   </nav>

@@ -4,11 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Capital Shares – CoopIMS</title>
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="../css/style.css">
 </head>
 <body>
 <?php
-require_once 'includes/config.php';
+require_once '../includes/config.php';
 requireLogin(['general_manager','book_keeper']);
 $activePage = 'capital_shares';
 $db = getDB();
@@ -50,7 +50,7 @@ $query = "SELECT m.*, cs.amount as capital_share, cs.updated_at, cs.updated_by,
 $members = $db->query($query);
 ?>
 
-<?php include 'includes/admin_sidebar.php'; ?>
+<?php include '../includes/admin_sidebar.php'; ?>
 
 <div class="main-content">
   <div class="topbar">
@@ -180,6 +180,6 @@ function cancelConfirmation() {
 }
 </script>
 
-<script src="js/app.js"></script>
+<script src="../js/app.js"></script>
 </body>
 </html>

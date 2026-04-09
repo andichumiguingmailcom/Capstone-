@@ -38,7 +38,7 @@ $user = getCurrentUser();
     </a>
 
     <div class="nav-section-label">Account</div>
-    <a href="logout.php" class="nav-item" style="color:rgba(255,100,100,0.8);">
+    <a href="../logout.php" class="nav-item" style="color:rgba(255,100,100,0.8);">
       <span class="nav-icon">🚪</span> Logout
     </a>
   </nav>

@@ -4,11 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>My Capital Shares – CoopIMS</title>
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="../css/style.css">
 </head>
 <body>
 <?php
-require_once 'includes/config.php';
+require_once '../includes/config.php';
 requireLogin('member');
 $activePage = 'capital_shares';
 $db = getDB();
@@ -25,7 +25,7 @@ $capitalShare = $db->query("SELECT cs.*, CONCAT_WS(' ', u.first_name, u.last_nam
 $member = $db->query("SELECT * FROM members WHERE id = $memberId")->fetch_assoc();
 ?>
 
-<?php include 'includes/member_sidebar.php'; ?>
+<?php include '../includes/member_sidebar.php'; ?>
 
 <div class="main-content">
   <div class="topbar">
@@ -106,6 +106,6 @@ $member = $db->query("SELECT * FROM members WHERE id = $memberId")->fetch_assoc(
   </div>
 </div>
 
-<script src="js/app.js"></script>
+<script src="../js/app.js"></script>
 </body>
 </html>

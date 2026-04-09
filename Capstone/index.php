@@ -125,13 +125,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <div style="margin-top:28px;padding-top:20px;border-top:1px solid var(--border);text-align:center;">
       <p class="text-muted text-sm">Not yet a member?</p>
-      <a href="member_pre_application.php" class="btn btn-outline" style="margin-top:10px;width:100%;justify-content:center;">
+      <a href="Member/member_pre_application.php" class="btn btn-outline" style="margin-top:10px;width:100%;justify-content:center;">
         Apply for Membership
       </a>
     </div>
 
     <div style="margin-top:20px;text-align:center;">
-      <a href="member_login.php" style="font-size:0.83rem;color:var(--primary);text-decoration:none;">
+      <a href="Member/member_login.php" style="font-size:0.83rem;color:var(--primary);text-decoration:none;">
         🙋 Member Portal Login →
       </a>
     </div>

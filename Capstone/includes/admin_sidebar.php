@@ -31,9 +31,6 @@ $user = getCurrentUser();
     <a href="admin_pre_applications.php" class="nav-item <?= ($activePage??'') === 'pre_apps' ? 'active' : '' ?>">
       <span class="nav-icon">📋</span> Pre-Applications
     </a>
-    <a href="admin_documents.php" class="nav-item <?= ($activePage??'') === 'documents' ? 'active' : '' ?>">
-      <span class="nav-icon">🗂️</span> Documents
-    </a>
     <?php endif; ?>
     <div class="nav-section-label">Loans</div>
     <?php if (in_array($user['role'], ['general_manager','collector','loan_officer'], true)): ?>

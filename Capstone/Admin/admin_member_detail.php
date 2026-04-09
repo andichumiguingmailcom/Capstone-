@@ -6,6 +6,8 @@ requireLogin(['general_manager','book_keeper','collector','loan_officer']);
 $db = getDB();
 
 $id = (int)($_GET['id'] ?? 0);
+$section = clean($_GET['section'] ?? 'default');
+
 if (!$id) {
     // For AJAX requests, return an error message and appropriate HTTP status
     http_response_code(400); // Bad Request
@@ -21,6 +23,38 @@ if (!$member) {
     http_response_code(404); // Not Found
     echo '<div class="text-center text-muted" style="padding:40px;">Member not found.</div>';
     exit; // Stop execution
+}
+
+// If viewing documents section, display documents only
+if ($section === 'documents') {
+    $documents = $db->query("SELECT * FROM documents WHERE member_id=$id ORDER BY uploaded_at DESC");
+    
+    if ($documents && $documents->num_rows > 0) {
+        echo '<div style="padding: 20px;">';
+        echo '<div class="table-wrap"><table>';
+        echo '<thead><tr><th>Type</th><th>File</th><th>Uploaded</th><th>Action</th></tr></thead>';
+        echo '<tbody>';
+        
+        while ($doc = $documents->fetch_assoc()) {
+            $fileLink = htmlspecialchars($doc['filepath']);
+            $fileName = htmlspecialchars($doc['filename']);
+            $docType = htmlspecialchars($doc['doc_type'] ?? 'Document');
+            $uploadDate = date('M j, Y', strtotime($doc['uploaded_at']));
+            
+            echo "<tr>";
+            echo "<td class='fw-600'>$docType</td>";
+            echo "<td>$fileName</td>";
+            echo "<td class='text-muted text-sm'>$uploadDate</td>";
+            echo "<td><a href='$fileLink' target='_blank' class='btn btn-sm btn-outline'>View</a></td>";
+            echo "</tr>";
+        }
+        
+        echo '</tbody></table></div>';
+        echo '</div>';
+    } else {
+        echo '<div class="text-center text-muted" style="padding:40px;">No documents uploaded for this member.</div>';
+    }
+    exit;
 }
 
 // Member stats

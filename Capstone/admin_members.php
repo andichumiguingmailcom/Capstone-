@@ -4,11 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Members – CoopIMS</title>
-  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 <?php
-require_once '../includes/config.php';
+require_once 'includes/config.php';
 requireLogin(['general_manager','book_keeper','collector','loan_officer']);
 $activePage = 'members';
 $db = getDB();
@@ -31,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $ext     = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
 
         if (in_array($ext, $allowed) && $file['size'] < 5*1024*1024) {
-            $uploadDir = '../uploads/docs/';
+            $uploadDir = 'uploads/docs/';
             if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
             $fname = 'doc_' . time() . '_' . uniqid() . '.' . $ext;
             move_uploaded_file($file['tmp_name'], $uploadDir . $fname);
@@ -53,7 +53,7 @@ $totalMembers = $db->query("SELECT COUNT(*) as c FROM members")->fetch_assoc()['
 $activeMembers = $db->query("SELECT COUNT(*) as c FROM members WHERE status='active'")->fetch_assoc()['c'];
 ?>
 
-<?php include '../includes/admin_sidebar.php'; ?>
+<?php include 'includes/admin_sidebar.php'; ?>
 
 <div class="main-content">
   <div class="topbar">
@@ -143,7 +143,6 @@ $activeMembers = $db->query("SELECT COUNT(*) as c FROM members WHERE status='act
                   <button class="btn btn-sm btn-outline" onclick="changeStatus(<?= $m['id'] ?>,'<?= $m['status'] ?>')">Edit Status</button>
                   <button class="btn btn-sm btn-ghost" onclick="viewMemberDetails(<?= $m['id'] ?>)">View</button>
                   <button class="btn btn-sm btn-primary" onclick="openUploadModal(<?= $m['id'] ?>, '<?= addslashes($m['full_name']) ?>')">📎 Upload</button>
-                  <button class="btn btn-sm btn-outline" onclick="viewMemberDocuments(<?= $m['id'] ?>, '<?= addslashes($m['full_name']) ?>')">📄 Documents</button>
                 </td>
               </tr>
               <?php endwhile; ?>
@@ -224,18 +223,7 @@ $activeMembers = $db->query("SELECT COUNT(*) as c FROM members WHERE status='act
   </div>
 </div>
 
-<!-- VIEW DOCUMENTS MODAL -->
-<div class="modal-overlay" id="modal-view-documents">
-  <div class="modal" style="max-width:800px;">
-    <button class="modal-close" onclick="closeModal('modal-view-documents')">✕</button>
-    <div class="modal-title" id="documentsTitle">Member Documents</div>
-    <div id="documentsContent" style="padding: 20px;">
-      <div class="text-center text-muted" style="padding:40px;">Loading documents...</div>
-    </div>
-  </div>
-</div>
-
-<script src="../js/app.js"></script>
+<script src="js/app.js"></script>
 <script>
 function changeStatus(id, currentStatus) {
   document.getElementById('statusMemberId').value = id;
@@ -273,30 +261,6 @@ function viewMemberDetails(memberId) {
     .catch(error => {
       modalContentDiv.innerHTML = `<div class="text-center text-danger" style="padding:40px;">Error loading details: ${error.message}</div>`;
       console.error('Error fetching member details:', error);
-    });
-}
-
-function viewMemberDocuments(memberId, memberName) {
-  const documentsDiv = document.getElementById('documentsContent');
-  const titleDiv = document.getElementById('documentsTitle');
-  
-  documentsDiv.innerHTML = '<div class="text-center text-muted" style="padding:40px;">Loading documents...</div>';
-  titleDiv.textContent = 'Documents for ' + memberName;
-  openModal('modal-view-documents');
-
-  fetch(`admin_member_detail.php?id=${memberId}&section=documents`)
-    .then(response => {
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-      return response.text();
-    })
-    .then(html => {
-      documentsDiv.innerHTML = html;
-    })
-    .catch(error => {
-      documentsDiv.innerHTML = `<div class="text-center text-danger" style="padding:40px;">Error loading documents: ${error.message}</div>`;
-      console.error('Error fetching member documents:', error);
     });
 }
 </script>

@@ -13,6 +13,33 @@ function showToast(msg, type = 'success') {
   setTimeout(() => toast.classList.remove('show'), 3000);
 }
 
+// ── CONFIRMATION MODAL ──
+function confirmAction(message, callback) {
+  // Remove existing if any
+  const existing = document.getElementById('modal-confirm-action');
+  if (existing) existing.remove();
+
+  const modalHtml = `
+    <div class="modal-overlay" id="modal-confirm-action" style="z-index: 9999;">
+      <div class="modal" style="max-width:400px; text-align:center; padding: 24px;">
+        <div class="modal-title" style="margin-bottom: 12px;">Confirm Action</div>
+        <div style="margin-bottom:24px; color: var(--text-muted); line-height: 1.5;">${message}</div>
+        <div class="modal-footer" style="justify-content:center; gap:12px; border:none; padding:0;">
+          <button class="btn btn-ghost" id="confirm-cancel">Cancel</button>
+          <button class="btn btn-primary" id="confirm-yes">Yes, Proceed</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+  
+  const modal = document.getElementById('modal-confirm-action');
+  setTimeout(() => modal.classList.add('open'), 10);
+
+  const close = () => { modal.classList.remove('open'); setTimeout(() => modal.remove(), 300); };
+  document.getElementById('confirm-yes').onclick = () => { close(); callback(); };
+  document.getElementById('confirm-cancel').onclick = close;
+}
+
 // ── MODAL ──
 function openModal(id) {
   document.getElementById(id).classList.add('open');
@@ -64,7 +91,57 @@ function setActiveNav() {
 
 // ── SIDEBAR TOGGLE (mobile) ──
 function toggleSidebar() {
-  document.querySelector('.sidebar').classList.toggle('open');
+  const sidebar = document.querySelector('.sidebar');
+  if (!sidebar) return;
+  const isOpen = sidebar.classList.toggle('open');
+  document.body.classList.toggle('sidebar-open', isOpen);
+  const backdrop = document.querySelector('.sidebar-backdrop');
+  if (backdrop) backdrop.classList.toggle('open', isOpen);
+}
+
+function closeSidebar() {
+  const sidebar = document.querySelector('.sidebar');
+  if (!sidebar) return;
+  sidebar.classList.remove('open');
+  document.body.classList.remove('sidebar-open');
+  const backdrop = document.querySelector('.sidebar-backdrop');
+  if (backdrop) backdrop.classList.remove('open');
+}
+
+function initSidebarToggle() {
+  const sidebar = document.querySelector('.sidebar');
+  const topbar = document.querySelector('.topbar');
+  if (!sidebar || !topbar) return;
+
+  if (!document.querySelector('.sidebar-backdrop')) {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'sidebar-backdrop';
+    backdrop.addEventListener('click', closeSidebar);
+    document.body.appendChild(backdrop);
+  }
+
+  if (!document.querySelector('.sidebar-toggle')) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'sidebar-toggle';
+    btn.setAttribute('aria-label', 'Toggle sidebar');
+    btn.innerHTML =
+      "<span class='sidebar-toggle__bar'></span><span class='sidebar-toggle__bar'></span><span class='sidebar-toggle__bar'></span>";
+    btn.addEventListener('click', toggleSidebar);
+    topbar.insertBefore(btn, topbar.firstChild);
+  }
+
+  // Close sidebar after navigating (mobile)
+  document.querySelectorAll('.sidebar .nav-item').forEach((a) => {
+    a.addEventListener('click', () => {
+      if (window.matchMedia('(max-width: 900px)').matches) closeSidebar();
+    });
+  });
+
+  // Close on Escape
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeSidebar();
+  });
 }
 
 // ── CONFIRM DELETE ──
@@ -92,6 +169,8 @@ function printSection(id) {
 }
 
 function initThemeToggle() {
+  // Corporate redesign: keep a consistent light UI (disable runtime theme toggle).
+  return;
   if (document.querySelector('.theme-toggle')) return;
   const btn = document.createElement('button');
   btn.type = 'button';
@@ -128,7 +207,7 @@ function initThemeToggle() {
 
 function initScrollReveal() {
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  const els = document.querySelectorAll('.card, .stat-card, .welcome-hero');
+  const els = document.querySelectorAll('.card, .stat-card, .welcome-hero, .stats-grid');
   if (!els.length) return;
   els.forEach((el) => el.classList.add('reveal-on-scroll'));
   const io = new IntersectionObserver(
@@ -136,18 +215,59 @@ function initScrollReveal() {
       entries.forEach((entry) => {
         if (entry.isIntersecting) {
           entry.target.classList.add('is-visible');
-          io.unobserve(entry.target);
+        } else {
+          entry.target.classList.remove('is-visible');
         }
       });
     },
-    { threshold: 0.06, rootMargin: '0px 0px -32px 0px' }
+    { threshold: 0.1 }
   );
   els.forEach((el) => io.observe(el));
 }
 
+// ── GLOBAL ACTION INTERCEPTOR ──
+function initActionHandlers() {
+  // Intercept all POST forms for confirmation
+  document.addEventListener('submit', function(e) {
+    const form = e.target;
+    if (form.method.toLowerCase() === 'post' && !form.dataset.confirmed) {
+      e.preventDefault();
+      const submitBtn = form.querySelector('button[type="submit"]');
+      const actionName = submitBtn ? submitBtn.innerText.replace(/[✅📥📤🗑️+]/g, '').trim() : "Submit";
+      
+      confirmAction(`Are you sure you want to ${actionName.toLowerCase()}?`, () => {
+        form.dataset.confirmed = "true";
+        form.submit();
+      });
+    }
+  });
+
+  // Check for msg in URL to show toast
+  const params = new URLSearchParams(window.location.search);
+  if (params.has('msg')) {
+    const msg = params.get('msg');
+    showToast(msg, msg.toLowerCase().includes('error') ? 'error' : 'success');
+    // Clean URL
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+}
+
+function togglePasswordVisibility(inputId, btn) {
+  const input = document.getElementById(inputId);
+  if (input.type === 'password') {
+    input.type = 'text';
+    btn.textContent = '🙈';
+  } else {
+    input.type = 'password';
+    btn.textContent = '👁️';
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+  initSidebarToggle();
   initThemeToggle();
   initScrollReveal();
   initTabs();
   setActiveNav();
+  initActionHandlers();
 });

@@ -17,11 +17,6 @@ $db = getDB();
 $memberId = $_SESSION['member_id'] ?? 0;
 $msg = ''; $msgType = 'green';
 
-// Get member's capital share
-$member = $db->query("SELECT capital_share FROM members WHERE id=$memberId")->fetch_assoc();
-$capitalShare = $member['capital_share'] ?? 0;
-$specialLoanRate = $capitalShare <= 75000 ? 2.0 : 1.5;
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $loanTypeId  = (int)$_POST['loan_type_id'];
     $amount      = (float)$_POST['amount'];
@@ -64,19 +59,13 @@ $myApps = $db->query("SELECT la.*, lt.type_name FROM loan_applications la
       <!-- LOAN TYPES INFO -->
       <div>
         <h3 style="font-family:'Syne',sans-serif;margin-bottom:16px;color:var(--primary-dark);">Available Loan Types</h3>
-        <?php 
-        $db->query("SELECT 1"); // reset
-        $loanTypesInfo = $db->query("SELECT * FROM loan_types ORDER BY type_name");
-        while ($lt = $loanTypesInfo->fetch_assoc()): 
-          $displayRate = $lt['type_name'] === 'Special Loan' ? $specialLoanRate : $lt['interest'];
-          $rateNote = $lt['type_name'] === 'Special Loan' ? ' (Based on capital share)' : '';
-        ?>
-          <div class="card" style="margin-bottom:12px;cursor:pointer;" onclick="selectLoan(<?= $lt['id'] ?>, '<?= addslashes($lt['type_name']) ?>', <?= $lt['max_amount'] ?>, <?= $lt['max_months'] ?><?= $lt['type_name'] === 'Special Loan' ? ", $specialLoanRate" : '' ?>)">
+        <?php while ($lt = $loanTypes->fetch_assoc()): ?>
+          <div class="card" style="margin-bottom:12px;cursor:pointer;" onclick="selectLoan(<?= $lt['id'] ?>, '<?= addslashes($lt['type_name']) ?>', <?= $lt['max_amount'] ?>, <?= $lt['max_months'] ?>)">
             <div class="card-body" style="padding:16px 20px;">
               <div style="display:flex;justify-content:space-between;align-items:center;">
                 <div>
                   <div class="fw-600"><?= htmlspecialchars($lt['type_name']) ?></div>
-                  <div class="text-muted text-sm"><?= $displayRate ?>% interest/month · up to <?= $lt['max_months'] ?> months<?= $rateNote ?></div>
+                  <div class="text-muted text-sm"><?= $lt['interest'] ?>% interest/month · up to <?= $lt['max_months'] ?> months</div>
                 </div>
                 <div style="text-align:right;">
                   <div class="fw-600" style="color:var(--primary);">₱<?= number_format($lt['max_amount'], 0) ?></div>
@@ -102,9 +91,8 @@ $myApps = $db->query("SELECT la.*, lt.type_name FROM loan_applications la
                   $db->query("SELECT 1"); // reset
                   $lt2 = $db->query("SELECT * FROM loan_types ORDER BY type_name");
                   while ($lt = $lt2->fetch_assoc()):
-                    $displayRate = $lt['type_name'] === 'Special Loan' ? $specialLoanRate : $lt['interest'];
                   ?>
-                    <option value="<?= $lt['id'] ?>" data-max="<?= $lt['max_amount'] ?>" data-months="<?= $lt['max_months'] ?>" data-interest="<?= $displayRate ?>" data-type="<?= htmlspecialchars($lt['type_name']) ?>">
+                    <option value="<?= $lt['id'] ?>" data-max="<?= $lt['max_amount'] ?>" data-months="<?= $lt['max_months'] ?>" data-interest="<?= $lt['interest'] ?>">
                       <?= htmlspecialchars($lt['type_name']) ?>
                     </option>
                   <?php endwhile; ?>
@@ -168,11 +156,7 @@ $myApps = $db->query("SELECT la.*, lt.type_name FROM loan_applications la
 
 <script src="js/app.js"></script>
 <script>
-// Member's capital share data
-const capitalShare = <?= $capitalShare ?>;
-const specialLoanRate = <?= $specialLoanRate ?>;
-
-function selectLoan(id, name, maxAmt, maxMonths, specialRate) {
+function selectLoan(id, name, maxAmt, maxMonths) {
   document.getElementById('loanTypeSelect').value = id;
   const opt = document.querySelector(`#loanTypeSelect option[value="${id}"]`);
   updateLimits(opt);
@@ -196,22 +180,14 @@ function calcMonthly() {
   const amt = parseFloat(document.getElementById('amountInput').value);
   const term = parseInt(document.getElementById('termInput').value);
   const opt = document.getElementById('loanTypeSelect').options[document.getElementById('loanTypeSelect').selectedIndex];
-  let rate = opt ? parseFloat(opt.dataset.interest) / 100 : 0;
+  const rate = opt ? parseFloat(opt.dataset.interest) / 100 : 0;
   const preview = document.getElementById('loanPreview');
-  
   if (amt > 0 && term > 0 && rate > 0) {
     const totalInterestFactor = rate * term;
     const monthly = (amt * (1 + totalInterestFactor)) / term;
     const total = monthly * term;
-    let interestNote = `Interest: ${(rate*100).toFixed(1)}%/mo`;
-    
-    // Add note for Special Loan showing capital share benefit
-    if (opt.dataset.type === 'Special Loan') {
-      interestNote += ` (Your capital share: ₱${capitalShare.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})})`;
-    }
-    
     document.getElementById('monthlyEst').textContent = '₱' + monthly.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-    document.getElementById('totalEst').textContent = 'Total repayment: ₱' + total.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + ` · ${interestNote}`;
+    document.getElementById('totalEst').textContent = 'Total repayment: ₱' + total.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + ` · Interest: ${(rate*100).toFixed(1)}%/mo`;
     preview.style.display = 'block';
   } else {
     preview.style.display = 'none';

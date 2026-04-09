@@ -1,6 +1,6 @@
 (function () {
   try {
-    var t = localStorage.getItem('coopims-theme') || 'dark';
-    document.documentElement.setAttribute('data-theme', t);
+    document.documentElement.setAttribute('data-theme', 'light');
+    localStorage.removeItem('coopims-theme');
   } catch (e) {}
 })();

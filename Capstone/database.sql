@@ -35,7 +35,6 @@ CREATE TABLE IF NOT EXISTS members (
     city            VARCHAR(100),
     province        VARCHAR(100),
     date_joined     DATE,
-    capital_share   DECIMAL(12,2) DEFAULT 0.00,
     status          ENUM('active','inactive','suspended') DEFAULT 'active',
     created_at      DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -209,9 +208,10 @@ INSERT IGNORE INTO users (username, password, first_name, last_name, role) VALUE
 ('staff1', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Maria', 'Santos', 'staff');
 
 INSERT IGNORE INTO loan_types (type_name, max_amount, interest, penalty_rate, max_months) VALUES
-('Spring Board', 50000.00, 2.5, 5.00, 12),
-('Regular Loan', 100000.00, 3.0, 2.00, 24),
-('Special Loan', 75000.00, 2.0, 3.00, 24);
+('Emergency Loan', 10000.00, 2.5, 5.00, 6),
+('Regular Loan', 50000.00, 1.5, 2.00, 24),
+('Educational Loan', 30000.00, 1.0, 2.00, 12),
+('Business Loan', 100000.00, 2.0, 3.00, 36);
 
 INSERT IGNORE INTO members (member_id, first_name, last_name, email, phone, date_joined, status) VALUES
 ('MEM-001', 'Juan', 'dela Cruz', 'juan@email.com', '09171234567', '2022-01-15', 'active'),

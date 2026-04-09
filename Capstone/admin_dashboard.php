@@ -51,48 +51,93 @@ $lowStockItems = $db->query("SELECT * FROM products WHERE stock <= reorder_pt AN
     </div>
   </div>
 
-  <div class="page-body">
-    <!-- STATS GRID -->
-    <div class="stats-grid">
-      <div class="stat-card green">
-        <span class="stat-icon">👥</span>
-        <div class="stat-value"><?= number_format($totalMembers) ?></div>
-        <div class="stat-label">Active Members</div>
-      </div>
-      <div class="stat-card gold">
-        <span class="stat-icon">📝</span>
-        <div class="stat-value"><?= $pendingLoans ?></div>
-        <div class="stat-label">Pending Loan Applications</div>
-        <div class="stat-change"><a href="admin_loan_applications.php" style="color:inherit;">View all →</a></div>
-      </div>
-      <div class="stat-card blue">
-        <span class="stat-icon">💳</span>
-        <div class="stat-value"><?= $activeLoans ?></div>
-        <div class="stat-label">Active Loans</div>
-        <div class="stat-change">₱<?= number_format($totalLoanBalance, 2) ?> outstanding</div>
-      </div>
-      <div class="stat-card green">
-        <span class="stat-icon">🛒</span>
-        <div class="stat-value">₱<?= number_format($todaySales, 0) ?></div>
-        <div class="stat-label">Today's Sales</div>
-      </div>
-      <div class="stat-card red">
-        <span class="stat-icon">📦</span>
-        <div class="stat-value"><?= $lowStock ?></div>
-        <div class="stat-label">Low Stock Items</div>
-        <div class="stat-change"><a href="admin_inventory.php" style="color:inherit;">View inventory →</a></div>
-      </div>
-      <div class="stat-card gold">
-        <span class="stat-icon">📋</span>
-        <div class="stat-value"><?= $pendingPreApps ?></div>
-        <div class="stat-label">Pre-Applications Pending</div>
-        <div class="stat-change"><a href="admin_pre_applications.php" style="color:inherit;">Review →</a></div>
+  <div class="page-body" style="height: calc(100vh - 76px); overflow-y: auto; scroll-snap-type: y mandatory; padding: 0; scroll-behavior: smooth;">
+    <style>
+      .snap-section {
+        scroll-snap-align: start;
+        padding: 24px;
+        min-height: calc(100vh - 76px);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
+      .stats-grid .stat-card {
+        padding: 40px 32px;
+      }
+      .stats-grid .stat-value {
+        font-size: 2.8rem;
+        font-weight: 800;
+      }
+      .stats-grid .stat-label {
+        font-size: 1.1rem;
+        font-weight: 600;
+      }
+      .stats-grid .stat-icon {
+        font-size: 2.2rem;
+      }
+      .card .card-header {
+        padding: 24px 28px;
+      }
+      .card .card-title {
+        font-size: 1.35rem;
+      }
+      .table-wrap table th, 
+      .table-wrap table td {
+        padding: 18px 24px;
+        font-size: 1rem;
+      }
+      .stat-change, .stat-change span {
+        font-size: 0.95rem !important;
+      }
+    </style>
+
+    <!-- PART 1: OVERVIEW CARDS -->
+    <div class="snap-section">
+      <div class="stats-grid reveal-on-scroll">
+        <div class="stat-card green" style="grid-column: span 4;">
+          <span class="stat-icon">👥</span>
+          <div class="stat-value"><?= number_format($totalMembers) ?></div>
+          <div class="stat-label">Active Members</div>
+          <div class="stat-change"><span class="text-muted text-xs">Verified accounts</span></div>
+        </div>
+        <div class="stat-card gold" style="grid-column: span 4;">
+          <span class="stat-icon">📝</span>
+          <div class="stat-value"><?= $pendingLoans ?></div>
+          <div class="stat-label">Pending Loan Applications</div>
+          <div class="stat-change"><a href="admin_loan_applications.php" style="color:inherit; text-decoration:none; font-weight:600;">View all →</a></div>
+        </div>
+        <div class="stat-card blue" style="grid-column: span 4;">
+          <span class="stat-icon">💳</span>
+          <div class="stat-value"><?= $activeLoans ?></div>
+          <div class="stat-label">Active Loans</div>
+          <div class="stat-change"><span class="text-sm">₱<?= number_format($totalLoanBalance, 2) ?> outstanding</span></div>
+        </div>
+        <div class="stat-card green" style="grid-column: span 4;">
+          <span class="stat-icon">🛒</span>
+          <div class="stat-value">₱<?= number_format($todaySales, 0) ?></div>
+          <div class="stat-label">Today's Sales</div>
+          <div class="stat-change"><span class="text-muted text-xs">Gross revenue today</span></div>
+        </div>
+        <div class="stat-card red" style="grid-column: span 4;">
+          <span class="stat-icon">📦</span>
+          <div class="stat-value"><?= $lowStock ?></div>
+          <div class="stat-label">Low Stock Items</div>
+          <div class="stat-change"><a href="admin_inventory.php" style="color:inherit; text-decoration:none; font-weight:600;">Manage inventory →</a></div>
+        </div>
+        <div class="stat-card gold" style="grid-column: span 4;">
+          <span class="stat-icon">📋</span>
+          <div class="stat-value"><?= $pendingPreApps ?></div>
+          <div class="stat-label">Pre-Applications Pending</div>
+          <div class="stat-change"><a href="admin_pre_applications.php" style="color:inherit; text-decoration:none; font-weight:600;">Review →</a></div>
+        </div>
       </div>
     </div>
 
-    <div class="grid-2">
-      <!-- RECENT LOAN APPLICATIONS -->
-      <div class="card">
+    <!-- PART 2: ACTIVITY LOGS & ALERTS -->
+    <div class="snap-section" style="justify-content: flex-start;">
+      <div class="grid-2" style="align-items: start; gap: 24px;">
+        <!-- LEFT COLUMN: RECENT LOAN APPLICATIONS -->
+      <div class="card reveal-on-scroll">
         <div class="card-header">
           <span class="card-title">Recent Loan Applications</span>
           <a href="admin_loan_applications.php" class="btn btn-sm btn-outline">View All</a>
@@ -135,10 +180,10 @@ $lowStockItems = $db->query("SELECT * FROM products WHERE stock <= reorder_pt AN
         </div>
       </div>
 
-      <!-- LOW STOCK & RECENT SALES -->
-      <div>
+      <!-- RIGHT COLUMN: ALERTS & SALES STACK -->
+      <div style="display: flex; flex-direction: column; gap: 24px;">
         <?php if ($lowStock > 0): ?>
-        <div class="card" style="border-left:3px solid var(--danger);">
+        <div class="card reveal-on-scroll" style="border-left:3px solid var(--danger);">
           <div class="card-header">
             <span class="card-title" style="color:var(--danger);">⚠️ Low Stock Alert</span>
             <a href="admin_inventory.php" class="btn btn-sm btn-outline">Manage</a>
@@ -160,10 +205,10 @@ $lowStockItems = $db->query("SELECT * FROM products WHERE stock <= reorder_pt AN
         </div>
         <?php endif; ?>
 
-        <div class="card">
+        <div class="card reveal-on-scroll">
           <div class="card-header">
             <span class="card-title">Recent Sales</span>
-            <a href="admin_sales.php" class="btn btn-sm btn-outline">View All</a>
+            <a href="admin_sales.php" class="btn btn-sm btn-outline">View All Sales</a>
           </div>
           <div class="card-body">
             <div class="table-wrap">
@@ -189,6 +234,7 @@ $lowStockItems = $db->query("SELECT * FROM products WHERE stock <= reorder_pt AN
           </div>
         </div>
       </div>
+    </div>
     </div>
   </div>
 </div>

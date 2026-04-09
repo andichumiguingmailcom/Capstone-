@@ -5,6 +5,43 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>COOP IMS – Login</title>
   <link rel="stylesheet" href="css/style.css">
+  <style>
+    body {
+      background-color: #7a1e2c !important; /* Professional Maroon Background */
+      background-image: none !important;
+    }
+    body::before, .login-page::before {
+      display: none !important; /* Disable global gradients */
+    }
+    .login-card {
+      background-color: #f4f4f2 !important; /* Dirty White login card */
+      color: #333333;
+      border: none;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    }
+    .login-title, .login-logo .logo-text {
+      color: #7a1e2c !important;
+    }
+    .login-sub, .login-logo .logo-sub, .login-card label, .login-card .text-muted, .login-card .text-sm {
+      color: #6b7280 !important;
+    }
+    .form-control {
+      background: #ffffff !important;
+      border: 1px solid #d1d5db !important;
+      color: #333333 !important;
+    }
+    .form-control::placeholder {
+      color: #9ca3af !important;
+    }
+    .login-card .btn-primary {
+      background-color: #7a1e2c !important;
+      color: #ffffff !important;
+    }
+    .login-card .btn-outline {
+      border-color: #7a1e2c !important;
+      color: #7a1e2c !important;
+    }
+  </style>
 </head>
 <body>
 <?php
@@ -66,10 +103,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       </div>
       <div class="form-group">
         <label class="form-label">Password</label>
-        <div style="position:relative;">
-          <input type="password" name="password" id="adminPassword" class="form-control" placeholder="Enter password" required autocomplete="current-password">
-          <button type="button" class="btn-password-toggle" onclick="togglePasswordVisibility('adminPassword')" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1.2rem;padding:0;color:var(--text-muted);">
-            <span id="adminPasswordIcon">👁️</span>
+        <div class="password-toggle-wrapper">
+          <input type="password" name="password" id="password" class="form-control" placeholder="Enter password" required autocomplete="current-password">
+          <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('password', this)">
+            👁️
           </button>
         </div>
       </div>
@@ -101,19 +138,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   </div>
 </div>
 
-<script>
-function togglePasswordVisibility(fieldId) {
-  const field = document.getElementById(fieldId);
-  const icon = document.getElementById(fieldId + 'Icon');
-  if (field.type === 'password') {
-    field.type = 'text';
-    icon.textContent = '👁️‍🗨️';
-  } else {
-    field.type = 'password';
-    icon.textContent = '👁️';
-  }
-}
-</script>
-
+<script src="js/app.js"></script>
 </body>
 </html>

@@ -94,17 +94,28 @@ $groceryCount  = $db->query("SELECT COUNT(*) as c FROM products WHERE category='
   </div>
 
   <div class="page-body">
-    <?php if ($msg): ?>
-      <div style="background:<?= strpos($msg, 'Error') === 0 ? '#fee' : '#d4f0dc' ?>;color:<?= strpos($msg, 'Error') === 0 ? '#c33' : '#1a6b3a' ?>;padding:12px 16px;border-radius:8px;margin-bottom:20px;border-left:3px solid <?= strpos($msg, 'Error') === 0 ? '#e74c3c' : '#2e9e58' ?>;">
-        <?= strpos($msg, 'Error') === 0 ? '❌' : '✅' ?> <?= htmlspecialchars($msg) ?>
-      </div>
-    <?php endif; ?>
+    <style>
+      .stats-grid .stat-card {
+        padding: 30px 24px;
+      }
+      .stats-grid .stat-value {
+        font-size: 2.2rem;
+        font-weight: 800;
+      }
+      .stats-grid .stat-label {
+        font-size: 0.95rem;
+        font-weight: 600;
+      }
+      .stats-grid .stat-icon {
+        font-size: 1.8rem;
+      }
+    </style>
 
-    <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:24px;">
-      <div class="stat-card green"><span class="stat-icon">📦</span><div class="stat-value"><?= $totalProducts ?></div><div class="stat-label">Total Products</div></div>
-      <div class="stat-card gold"><span class="stat-icon">🌾</span><div class="stat-value"><?= $riceCount ?></div><div class="stat-label">Rice Products</div></div>
-      <div class="stat-card blue"><span class="stat-icon">🛒</span><div class="stat-value"><?= $groceryCount ?></div><div class="stat-label">Grocery Products</div></div>
-      <div class="stat-card red"><span class="stat-icon">⚠️</span><div class="stat-value"><?= $lowStockCount ?></div><div class="stat-label">Low Stock</div></div>
+    <div class="stats-grid" style="display: flex; gap: 20px; margin-bottom: 32px; width: 100%;">
+      <div class="stat-card green" style="flex: 1;"><span class="stat-icon">📦</span><div class="stat-value"><?= $totalProducts ?></div><div class="stat-label">Total Products</div></div>
+      <div class="stat-card gold" style="flex: 1;"><span class="stat-icon">🌾</span><div class="stat-value"><?= $riceCount ?></div><div class="stat-label">Rice Products</div></div>
+      <div class="stat-card blue" style="flex: 1;"><span class="stat-icon">🛒</span><div class="stat-value"><?= $groceryCount ?></div><div class="stat-label">Grocery Products</div></div>
+      <div class="stat-card red" style="flex: 1;"><span class="stat-icon">⚠️</span><div class="stat-value"><?= $lowStockCount ?></div><div class="stat-label">Low Stock</div></div>
     </div>
 
     <div class="grid-2">
@@ -152,7 +163,7 @@ $groceryCount  = $db->query("SELECT COUNT(*) as c FROM products WHERE category='
                   <td>
                     <button class="btn btn-sm btn-primary" onclick="stockAction(<?= $p['id'] ?>,'<?= addslashes($p['name']) ?>','stock_in')">+ In</button>
                     <button class="btn btn-sm btn-outline" onclick="stockAction(<?= $p['id'] ?>,'<?= addslashes($p['name']) ?>','stock_out')">- Out</button>
-                    <form method="POST" style="display:inline" onsubmit="return confirmDelete('Delete this product?')">
+                    <form method="POST" style="display:inline">
                       <input type="hidden" name="action" value="delete_product">
                       <input type="hidden" name="product_id" value="<?= $p['id'] ?>">
                       <button type="submit" class="btn btn-sm btn-danger">🗑️</button>

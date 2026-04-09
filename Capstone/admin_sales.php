@@ -81,20 +81,16 @@ $monthTotal = $db->query("SELECT SUM(total) as s FROM sales WHERE MONTH(sale_dat
   <div class="topbar">
     <div class="topbar-title">Sales Recording</div>
     <div class="topbar-actions">
-      <button class="btn btn-primary btn-large" onclick="openModal('modal-add-sale')" style="font-size: 1.1rem; padding: 12px 24px; font-weight: 600;">
+      <button class="btn btn-primary" onclick="openModal('modal-add-sale')">
         🛒 Record New Sale
       </button>
     </div>
   </div>
 
   <div class="page-body">
-    <?php if ($msg): ?>
-      <div style="background:#d4f0dc;color:#1a6b3a;padding:12px 16px;border-radius:8px;margin-bottom:20px;border-left:3px solid #2e9e58;">✅ <?= htmlspecialchars($msg) ?></div>
-    <?php endif; ?>
-
-    <div class="stats-grid" style="grid-template-columns:repeat(2,1fr);margin-bottom:24px;">
-      <div class="stat-card green"><span class="stat-icon">🛒</span><div class="stat-value">₱<?= number_format($todayTotal,0) ?></div><div class="stat-label">Today's Sales</div></div>
-      <div class="stat-card blue"><span class="stat-icon">📅</span><div class="stat-value">₱<?= number_format($monthTotal,0) ?></div><div class="stat-label">This Month's Sales</div></div>
+    <div class="stats-grid" style="display: flex; gap: 20px; margin-bottom: 24px; width: 100%;">
+      <div class="stat-card green" style="flex: 1;"><span class="stat-icon">🛒</span><div class="stat-value">₱<?= number_format($todayTotal,0) ?></div><div class="stat-label">Today's Sales</div></div>
+      <div class="stat-card blue" style="flex: 1;"><span class="stat-icon">📅</span><div class="stat-value">₱<?= number_format($monthTotal,0) ?></div><div class="stat-label">This Month's Sales</div></div>
     </div>
 
     <div class="card">
@@ -198,7 +194,7 @@ $monthTotal = $db->query("SELECT SUM(total) as s FROM sales WHERE MONTH(sale_dat
 
       <div class="modal-footer">
         <button type="button" class="btn btn-ghost" onclick="closeModal('modal-add-sale')">Cancel</button>
-        <button type="submit" class="btn btn-primary btn-large" style="font-size: 1.1rem; padding: 12px 24px; font-weight: 600;">
+        <button type="submit" class="btn btn-primary">
           ✅ Record Sale
         </button>
       </div>

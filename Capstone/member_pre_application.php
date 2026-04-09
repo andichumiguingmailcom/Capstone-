@@ -5,6 +5,46 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Apply for Membership – CoopIMS</title>
   <link rel="stylesheet" href="css/style.css">
+  <style>
+    body {
+      background-color: #7a1e2c !important; /* Professional Maroon Background */
+      background-image: none !important;
+    }
+    body::before, .login-page::before {
+      display: none !important; /* Disable global gradients */
+    }
+    .pre-app-card {
+      background-color: #f4f4f2 !important; /* Dirty White card */
+      color: #333333;
+      border: none;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      border-radius: 24px;
+    }
+    .pre-app-headline, .pre-app-title {
+      color: #7a1e2c !important;
+    }
+    .pre-app-lead, .pre-app-intro, label, .text-muted, .text-sm {
+      color: #6b7280 !important;
+    }
+    .form-control {
+      background: #ffffff !important;
+      border: 1px solid #d1d5db !important;
+      color: #333333 !important;
+    }
+    .form-control::placeholder {
+      color: #9ca3af !important;
+    }
+    .btn-primary {
+      background-color: #7a1e2c !important;
+      color: #ffffff !important;
+      border: none;
+    }
+    .pre-app-verify {
+      background: #eadddd !important; /* Light maroon tint for verify box */
+      color: #7a1e2c !important;
+      border: 1px solid rgba(122, 30, 44, 0.2) !important;
+    }
+  </style>
 </head>
 <body>
 <?php
@@ -138,17 +178,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 ?>
 
-<div class="login-page" style="background:linear-gradient(135deg,#0f4424,#1a6b3a,#2e9e58);">
+<div class="login-page">
   <div style="width:100%;max-width:600px;padding:20px;">
     <?php if ($submitted): ?>
-      <div style="background:#fff;border-radius:20px;padding:48px 40px;text-align:center;">
-        <div style="font-size:4rem;margin-bottom:20px;">🎉</div>
-        <h2 style="font-family:'Syne',sans-serif;font-size:1.6rem;color:var(--primary-dark);margin-bottom:12px;">Application Submitted!</h2>
-        <p style="color:var(--text-muted);margin-bottom:24px;line-height:1.6;">
+      <div class="pre-app-card pre-app-card--success" style="padding:48px 40px;text-align:center;">
+        <div class="pre-app-emoji">🎉</div>
+        <h2 class="pre-app-headline">Application Submitted!</h2>
+        <p class="pre-app-lead">
           Thank you for applying for membership at our cooperative. Your pre-application has been received and is under review.
           We will contact you at your provided email or phone number within 3-5 business days.
         </p>
-        <div style="background:#d4f0dc;border-radius:10px;padding:16px;margin-bottom:24px;color:#1a6b3a;font-size:0.88rem;">
+        <div class="pre-app-verify">
           ✅ Your application has been submitted successfully.
           <?php if (empty($emailError)): ?>
             A confirmation email has been sent to <?= htmlspecialchars($email) ?>.
@@ -159,12 +199,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <a href="index.php" class="btn btn-primary">Return to Login</a>
       </div>
     <?php else: ?>
-      <div style="background:#fff;border-radius:20px;padding:44px 40px;">
+      <div class="pre-app-card" style="padding:44px 40px;">
         <div style="margin-bottom:28px;">
-          <div style="font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;color:var(--primary-dark);">
+          <div class="pre-app-title">
             🌾 Join Our Cooperative
           </div>
-          <p style="color:var(--text-muted);margin-top:6px;font-size:0.9rem;">
+          <p class="pre-app-intro">
             Fill out this pre-application form. Our team will review and contact you shortly.
           </p>
         </div>

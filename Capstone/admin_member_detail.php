@@ -1,30 +1,26 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Member Details – CoopIMS</title>
-  <link rel="stylesheet" href="css/style.css">
-</head>
-<body>
 <?php
 require_once 'includes/config.php';
-requireLogin('book_keeper');
-$activePage = 'members';
+// The roles here should ideally match those allowed to view members in admin_members.php
+// This ensures the AJAX endpoint is also protected.
+requireLogin(['general_manager','book_keeper','collector','loan_officer']);
 $db = getDB();
 
 $id = (int)($_GET['id'] ?? 0);
 if (!$id) {
-    header('Location: admin_members.php?msg=Invalid+member+ID.');
-    exit;
+    // For AJAX requests, return an error message and appropriate HTTP status
+    http_response_code(400); // Bad Request
+    echo '<div class="text-center text-muted" style="padding:40px;">Invalid member ID.</div>';
+    exit; // Stop execution to prevent rendering full page HTML
 }
 
 $member = $db->query("SELECT *, CONCAT_WS(' ', first_name, middle_name, last_name) as full_name,
     CONCAT_WS(', ', street, barangay, city, province) as address
     FROM members WHERE id=$id")->fetch_assoc();
 if (!$member) {
-    header('Location: admin_members.php?msg=Member+not+found.');
-    exit;
+    // For AJAX requests, return an error message and appropriate HTTP status
+    http_response_code(404); // Not Found
+    echo '<div class="text-center text-muted" style="padding:40px;">Member not found.</div>';
+    exit; // Stop execution
 }
 
 // Member stats
@@ -44,22 +40,12 @@ $purchases = $db->query("SELECT s.*, GROUP_CONCAT(p.name SEPARATOR ', ') as item
     FROM sales s LEFT JOIN sale_items si ON s.id=si.sale_id LEFT JOIN products p ON si.product_id=p.id
     WHERE s.member_id=$id GROUP BY s.id ORDER BY s.sale_date DESC LIMIT 10");
 
-// Recent payments
+// Recent payments (limit 10 for modal display, can be adjusted if needed)
 $payments = $db->query("SELECT lp.*, l.principal FROM loan_payments lp 
     JOIN loans l ON lp.loan_id=l.id WHERE l.member_id=$id ORDER BY lp.paid_at DESC LIMIT 10");
 ?>
-
-<?php include 'includes/admin_sidebar.php'; ?>
-
-<div class="main-content">
-  <div class="topbar">
-    <div class="topbar-title">Member Details</div>
-    <div class="topbar-actions">
-      <a href="admin_members.php" class="btn btn-ghost">← Back to Members</a>
-    </div>
-  </div>
-
-  <div class="page-body">
+<div class="modal-title"> <?= htmlspecialchars($member['full_name']) ?></div>
+<div class="modal-body-content" style="max-height: 70vh; overflow-y: auto; padding-right: 15px;">
     <!-- MEMBER INFO -->
     <div class="card" style="margin-bottom:24px;">
       <div class="card-header">
@@ -187,7 +173,6 @@ $payments = $db->query("SELECT lp.*, l.principal FROM loan_payments lp
     </div>
   </div>
 </div>
-
-<script src="js/app.js"></script>
-</body>
-</html>
+<div class="modal-footer">
+    <button class="btn btn-ghost" onclick="closeModal('modal-member-details')">Close</button>
+</div>

@@ -20,11 +20,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $db->query("UPDATE members SET status='$status' WHERE id=$id");
         header('Location: admin_members.php?msg=Status+updated.'); exit;
     }
-    if ($action === 'update_capital_share') {
-        $id = (int)$_POST['id']; $capital_share = (float)$_POST['capital_share'];
-        $db->query("UPDATE members SET capital_share=$capital_share WHERE id=$id");
-        header('Location: admin_members.php?msg=Capital+share+updated.'); exit;
-    }
 }
 
 $msg = clean($_GET['msg'] ?? '');
@@ -46,16 +41,47 @@ $activeMembers = $db->query("SELECT COUNT(*) as c FROM members WHERE status='act
   </div>
 
   <div class="page-body">
-    <?php if ($msg): ?>
-      <div style="background:#d4f0dc;color:#1a6b3a;padding:12px 16px;border-radius:8px;margin-bottom:20px;border-left:3px solid #2e9e58;">
-        ✅ <?= htmlspecialchars($msg) ?>
-      </div>
-    <?php endif; ?>
+    <style>
+      .stats-grid .stat-card {
+        padding: 30px 24px;
+      }
+      .stats-grid .stat-value {
+        font-size: 2.2rem;
+        font-weight: 800;
+      }
+      .stats-grid .stat-label {
+        font-size: 0.95rem;
+        font-weight: 600;
+      }
+      .stats-grid .stat-icon {
+        font-size: 1.8rem;
+      }
+      .stat-change, .stat-change span {
+        font-size: 0.85rem !important;
+      }
+    </style>
 
-    <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:24px;">
-      <div class="stat-card green"><span class="stat-icon">👥</span><div class="stat-value"><?= $totalMembers ?></div><div class="stat-label">Total Members</div></div>
-      <div class="stat-card blue"><span class="stat-icon">✅</span><div class="stat-value"><?= $activeMembers ?></div><div class="stat-label">Active</div></div>
-      <div class="stat-card gold"><span class="stat-icon">⏸️</span><div class="stat-value"><?= $totalMembers - $activeMembers ?></div><div class="stat-label">Inactive / Suspended</div></div>
+    <div class="stats-grid reveal-on-scroll" style="display: flex; gap: 20px; margin-bottom: 32px; width: 100%;">
+      <div class="stat-card green" style="flex: 1;">
+        <span class="stat-icon">👥</span>
+        <div class="stat-value"><?= number_format($totalMembers) ?></div>
+        <div class="stat-label">Total Members</div>
+        <div class="stat-change"><span class="text-muted">Lifetime registrations</span></div>
+      </div>
+      
+      <div class="stat-card blue" style="flex: 1;">
+        <span class="stat-icon">✅</span>
+        <div class="stat-value"><?= number_format($activeMembers) ?></div>
+        <div class="stat-label">Active Members</div>
+        <div class="stat-change"><span class="text-muted">Accounts in good standing</span></div>
+      </div>
+
+      <div class="stat-card gold" style="flex: 1;">
+        <span class="stat-icon">⏸️</span>
+        <div class="stat-value"><?= number_format($totalMembers - $activeMembers) ?></div>
+        <div class="stat-label">Inactive / Suspended</div>
+        <div class="stat-change"><span class="text-muted">Requires administrative review</span></div>
+      </div>
     </div>
 
     <div class="card">
@@ -73,7 +99,7 @@ $activeMembers = $db->query("SELECT COUNT(*) as c FROM members WHERE status='act
         <div class="table-wrap">
           <table id="memTable">
             <thead>
-              <tr><th>Member ID</th><th>Full Name</th><th>Contact</th><th>Capital Share</th><th>Date Joined</th><th>Active Loans</th><th>Purchases</th><th>Status</th><th>Actions</th></tr>
+              <tr><th>Member ID</th><th>Full Name</th><th>Contact</th><th>Date Joined</th><th>Active Loans</th><th>Purchases</th><th>Status</th><th>Actions</th></tr>
             </thead>
             <tbody>
               <?php while ($m = $members->fetch_assoc()): ?>
@@ -84,7 +110,6 @@ $activeMembers = $db->query("SELECT COUNT(*) as c FROM members WHERE status='act
                   <div class="text-muted text-sm"><?= htmlspecialchars($m['email'] ?? '') ?></div>
                 </td>
                 <td class="text-muted"><?= $m['phone'] ?></td>
-                <td class="fw-600">₱<?= number_format($m['capital_share'] ?? 0, 2) ?></td>
                 <td><?= $m['date_joined'] ? date('M j, Y', strtotime($m['date_joined'])) : '—' ?></td>
                 <td><?= $m['active_loans'] > 0 ? '<span class="badge badge-blue">'.$m['active_loans'].'</span>' : '0' ?></td>
                 <td><?= $m['purchases'] ?></td>
@@ -93,9 +118,8 @@ $activeMembers = $db->query("SELECT COUNT(*) as c FROM members WHERE status='act
                   <span class="badge <?= $sb[$m['status']] ?>"><?= ucfirst($m['status']) ?></span>
                 </td>
                 <td>
-                  <button class="btn btn-sm btn-outline" onclick="changeCapitalShare(<?= $m['id'] ?>, <?= $m['capital_share'] ?? 0 ?>)">Capital</button>
-                  <button class="btn btn-sm btn-outline" onclick="changeStatus(<?= $m['id'] ?>,'<?= $m['status'] ?>')">Status</button>
-                  <a href="admin_member_detail.php?id=<?= $m['id'] ?>" class="btn btn-sm btn-ghost">View</a>
+                  <button class="btn btn-sm btn-outline" onclick="changeStatus(<?= $m['id'] ?>,'<?= $m['status'] ?>')">Edit Status</button>
+                  <button class="btn btn-sm btn-ghost" onclick="viewMemberDetails(<?= $m['id'] ?>)">View</button>
                 </td>
               </tr>
               <?php endwhile; ?>
@@ -104,26 +128,6 @@ $activeMembers = $db->query("SELECT COUNT(*) as c FROM members WHERE status='act
         </div>
       </div>
     </div>
-  </div>
-</div>
-
-<!-- CAPITAL SHARE MODAL -->
-<div class="modal-overlay" id="modal-capital-share">
-  <div class="modal">
-    <button class="modal-close" onclick="closeModal('modal-capital-share')">✕</button>
-    <div class="modal-title">Update Capital Share</div>
-    <form method="POST">
-      <input type="hidden" name="action" value="update_capital_share">
-      <input type="hidden" name="id" id="capitalShareMemberId">
-      <div class="form-group">
-        <label class="form-label">Capital Share Amount (₱)</label>
-        <input type="number" name="capital_share" id="capitalShareInput" class="form-control" min="0" step="0.01" required>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-ghost" onclick="closeModal('modal-capital-share')">Cancel</button>
-        <button type="submit" class="btn btn-primary">Update</button>
-      </div>
-    </form>
   </div>
 </div>
 
@@ -151,13 +155,19 @@ $activeMembers = $db->query("SELECT COUNT(*) as c FROM members WHERE status='act
   </div>
 </div>
 
+<!-- MEMBER DETAILS MODAL -->
+<div class="modal-overlay" id="modal-member-details">
+  <div class="modal" style="max-width:900px;">
+    <button class="modal-close" onclick="closeModal('modal-member-details')">✕</button>
+    <div id="memberDetailsContent">
+      <!-- Content will be loaded here via AJAX -->
+      <div class="text-center text-muted" style="padding:40px;">Loading member details...</div>
+    </div>
+  </div>
+</div>
+
 <script src="js/app.js"></script>
 <script>
-function changeCapitalShare(id, currentValue) {
-  document.getElementById('capitalShareMemberId').value = id;
-  document.getElementById('capitalShareInput').value = currentValue;
-  openModal('modal-capital-share');
-}
 function changeStatus(id, currentStatus) {
   document.getElementById('statusMemberId').value = id;
   document.getElementById('statusSelect').value = currentStatus;
@@ -168,6 +178,27 @@ function filterByStatus(val) {
     if (!val) { row.style.display=''; return; }
     row.style.display = row.textContent.toLowerCase().includes(val) ? '' : 'none';
   });
+}
+
+function viewMemberDetails(memberId) {
+  const modalContentDiv = document.getElementById('memberDetailsContent');
+  modalContentDiv.innerHTML = '<div class="text-center text-muted" style="padding:40px;">Loading member details...</div>'; // Show loading state
+  openModal('modal-member-details');
+
+  fetch(`admin_member_detail.php?id=${memberId}`)
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      return response.text();
+    })
+    .then(html => {
+      modalContentDiv.innerHTML = html;
+    })
+    .catch(error => {
+      modalContentDiv.innerHTML = `<div class="text-center text-danger" style="padding:40px;">Error loading details: ${error.message}</div>`;
+      console.error('Error fetching member details:', error);
+    });
 }
 </script>
 </body>

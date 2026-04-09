@@ -32,7 +32,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['loan_id']) && isset($
     $loan = $stmt->get_result()->fetch_assoc();
 
     if ($loan && $amount > 0 && $loan['status'] === 'active') {
-        $db->query("INSERT INTO loan_payments (loan_id, amount, payment_method, reference_no, recorded_by) VALUES ($loanId, $amount, '$method', '{$db->real_escape_string($ref)}', $uid)");
+        $stmt_pay = $db->prepare("INSERT INTO loan_payments (loan_id, amount, payment_method, reference_no, recorded_by) VALUES (?, ?, ?, ?, ?)");
+        $stmt_pay->bind_param('idssi', $loanId, $amount, $method, $ref, $uid);
+        $stmt_pay->execute();
+
         $newBalance = max(0, $loan['balance'] - $amount);
         $newStatus = $newBalance <= 0 ? 'settled' : 'active';
         $stmt2 = $db->prepare("UPDATE loans SET balance=?, status=? WHERE id=?");
@@ -115,27 +118,26 @@ $activeLoans = $db->query("SELECT l.id, CONCAT_WS(' ', m.first_name, m.middle_na
             <table>
               <thead>
                 <tr>
-                  <th>Date</th>
                   <th>Member</th>
-                  <th>Loan Type</th>
-                  <th>Amount</th>
-                  <th>Method</th>
-                  <th>Reference/Receipt</th>
+                  <th>Date</th>
                 </tr>
               </thead>
               <tbody>
                 <?php while ($p = $payments->fetch_assoc()): ?>
-                <tr>
+                <tr onclick="viewPaymentDetails(this)" 
+                    style="cursor:pointer;"
+                    data-member="<?= htmlspecialchars($p['full_name']) ?> (<?= htmlspecialchars($p['mem_code']) ?>)"
+                    data-date="<?= date('M j, Y H:i', strtotime($p['paid_at'])) ?>"
+                    data-loan="<?= htmlspecialchars($p['type_name']) ?>"
+                    data-amount="₱<?= number_format($p['amount'], 2) ?>"
+                    data-method="<?= ucfirst($p['payment_method']) ?>"
+                    data-ref="<?= htmlspecialchars($p['reference_no'] ?: '—') ?>">
+                  <td><div class="fw-600"><?= htmlspecialchars($p['full_name']) ?></div><div class="text-muted text-sm"><?= htmlspecialchars($p['mem_code']) ?></div></td>
                   <td><?= date('M j, Y', strtotime($p['paid_at'])) ?></td>
-                  <td><?= htmlspecialchars($p['full_name']) ?> (<?= htmlspecialchars($p['mem_code']) ?>)</td>
-                  <td><?= htmlspecialchars($p['type_name']) ?></td>
-                  <td class="fw-600">₱<?= number_format($p['amount'], 2) ?></td>
-                  <td><span class="badge badge-green"><?= ucfirst($p['payment_method']) ?></span></td>
-                  <td><?= htmlspecialchars($p['reference_no'] ?: '—') ?></td>
                 </tr>
                 <?php endwhile; ?>
                 <?php if ($payments->num_rows === 0): ?>
-                <tr><td colspan="6" style="text-align:center;color:var(--text-muted);">No payment history yet.</td></tr>
+                <tr><td colspan="2" style="text-align:center;color:var(--text-muted);">No payment history yet.</td></tr>
                 <?php endif; ?>
               </tbody>
             </table>
@@ -144,6 +146,25 @@ $activeLoans = $db->query("SELECT l.id, CONCAT_WS(' ', m.first_name, m.middle_na
       </div>
     </div>
 
+  </div>
+</div>
+
+<!-- PAYMENT DETAILS MODAL -->
+<div class="modal-overlay" id="modal-payment-details">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-payment-details')">✕</button>
+    <div class="modal-title">Payment Details</div>
+    <div class="details-grid" style="gap:12px; margin-top:12px;">
+      <div><strong>Member:</strong> <span id="det-member"></span></div>
+      <div><strong>Date:</strong> <span id="det-date"></span></div>
+      <div><strong>Loan Type:</strong> <span id="det-loan"></span></div>
+      <div><strong>Amount:</strong> <span id="det-amount" class="fw-600" style="color:var(--primary);"></span></div>
+      <div><strong>Method:</strong> <span><span id="det-method" class="badge badge-green"></span></span></div>
+      <div><strong>Reference:</strong> <span id="det-ref"></span></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="closeModal('modal-payment-details')">Close</button>
+    </div>
   </div>
 </div>
 
@@ -164,6 +185,16 @@ function updateRefLabel() {
     input.placeholder = 'e.g., GCash Reference Number';
     helper.style.display = 'none';
   }
+}
+
+function viewPaymentDetails(row) {
+  document.getElementById('det-member').textContent = row.dataset.member;
+  document.getElementById('det-date').textContent = row.dataset.date;
+  document.getElementById('det-loan').textContent = row.dataset.loan;
+  document.getElementById('det-amount').textContent = row.dataset.amount;
+  document.getElementById('det-method').textContent = row.dataset.method;
+  document.getElementById('det-ref').textContent = row.dataset.ref;
+  openModal('modal-payment-details');
 }
 
 // Initialize on page load

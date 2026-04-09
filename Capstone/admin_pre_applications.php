@@ -131,12 +131,12 @@ $apps = $db->query("SELECT *,
         </div>
         <div class="table-wrap">
           <table id="appTable">
-            <thead><tr><th>#</th><th>Full Name</th><th>Contact</th><th>Address</th><th>Submitted</th><th>Status</th><th>Attachments</th><th>Actions</th></tr></thead>
+            <thead><tr><th>#</th><th>Full Name</th><th>Contact</th><th>Address</th><th>Submitted</th><th>Status</th><th>Attachments</th></tr></thead>
             <tbody>
               <?php while ($a = $apps->fetch_assoc()):
                 $b = ['pending'=>'badge-gold','approved'=>'badge-green','rejected'=>'badge-red'][$a['status']] ?? 'badge-gray';
               ?>
-              <tr>
+              <tr onclick="reviewApp(<?= $a['id'] ?>,'<?= addslashes($a['full_name']) ?>','<?= $a['status'] ?>','<?= addslashes($a['admin_notes'] ?? '') ?>')" style="cursor:pointer;" title="Click to review or view details">
                 <td class="text-muted">#<?= $a['id'] ?></td>
                 <td><div class="fw-600"><?= htmlspecialchars($a['full_name']) ?></div></td> 
                 <td><div><?= htmlspecialchars($a['email']) ?></div><div class="text-muted text-sm"><?= $a['phone'] ?></div></td>
@@ -150,19 +150,11 @@ $apps = $db->query("SELECT *,
                   ?>
                     <div style="display:flex;gap:6px;flex-wrap:wrap;">
                     <?php while ($doc = $documents->fetch_assoc()): ?>
-                      <a href="<?= htmlspecialchars($doc['filepath']) ?>" target="_blank" class="badge badge-blue" style="font-size:0.75rem;">📎 <?= htmlspecialchars($doc['doc_type']) ?></a>
+                      <a href="<?= htmlspecialchars($doc['filepath']) ?>" target="_blank" class="badge badge-blue" style="font-size:0.75rem;" onclick="event.stopPropagation();">📎 <?= htmlspecialchars($doc['doc_type']) ?></a>
                     <?php endwhile; ?>
                     </div>
                   <?php else: ?>
                     <span class="text-muted text-sm">No attachments</span>
-                  <?php endif; ?>
-                </td>
-                <td>
-                  <?php if ($a['status']==='pending'): ?>
-                    <button class="btn btn-sm btn-primary" onclick="reviewApp(<?= $a['id'] ?>,'approved','<?= addslashes($a['full_name']) ?>')">✅ Approve</button>
-                    <button class="btn btn-sm btn-danger" onclick="reviewApp(<?= $a['id'] ?>,'rejected','<?= addslashes($a['full_name']) ?>')">❌ Reject</button>
-                  <?php else: ?>
-                    <span class="text-muted text-sm"><?= $a['admin_notes'] ? htmlspecialchars(substr($a['admin_notes'],0,30)).'...' : 'Reviewed' ?></span>
                   <?php endif; ?>
                 </td>
               </tr>
@@ -182,14 +174,12 @@ $apps = $db->query("SELECT *,
     <p id="reviewName" style="color:var(--text-muted);margin-bottom:16px;"></p>
     <form method="POST">
       <input type="hidden" name="id" id="reviewId">
-      <input type="hidden" name="action" id="reviewAction">
       <div class="form-group">
         <label class="form-label">Admin Notes</label>
-        <textarea name="notes" class="form-control" rows="3" placeholder="Reason or notes (optional)..."></textarea>
+        <textarea name="notes" id="reviewNotes" class="form-control" rows="3" placeholder="Reason or notes (optional)..."></textarea>
       </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-ghost" onclick="closeModal('modal-review')">Cancel</button>
-        <button type="submit" class="btn btn-primary" id="reviewBtn">Confirm</button>
+      <div class="modal-footer" id="reviewFooter">
+        <!-- Buttons will be injected by JS -->
       </div>
     </form>
   </div>
@@ -197,13 +187,28 @@ $apps = $db->query("SELECT *,
 
 <script src="js/app.js"></script>
 <script>
-function reviewApp(id, action, name) {
+function reviewApp(id, name, status, notes) {
   document.getElementById('reviewId').value = id;
-  document.getElementById('reviewAction').value = action;
-  document.getElementById('reviewTitle').textContent = (action === 'approved' ? '✅ Approve' : '❌ Reject') + ' Application';
   document.getElementById('reviewName').textContent = 'Applicant: ' + name;
-  document.getElementById('reviewBtn').className = 'btn ' + (action === 'approved' ? 'btn-primary' : 'btn-danger');
-  document.getElementById('reviewBtn').textContent = action === 'approved' ? 'Approve' : 'Reject';
+  
+  const notesField = document.getElementById('reviewNotes');
+  const footer = document.getElementById('reviewFooter');
+  
+  if (status === 'pending') {
+    document.getElementById('reviewTitle').textContent = '📝 Review Application';
+    notesField.value = '';
+    notesField.readOnly = false;
+    footer.innerHTML = `
+      <button type="button" class="btn btn-ghost" onclick="closeModal('modal-review')">Cancel</button>
+      <button type="submit" name="action" value="rejected" class="btn btn-danger">Reject</button>
+      <button type="submit" name="action" value="approved" class="btn btn-primary">Approve</button>
+    `;
+  } else {
+    document.getElementById('reviewTitle').textContent = '📄 Application Reviewed';
+    notesField.value = notes;
+    notesField.readOnly = true;
+    footer.innerHTML = `<button type="button" class="btn btn-primary" onclick="closeModal('modal-review')">Close</button>`;
+  }
   openModal('modal-review');
 }
 </script>

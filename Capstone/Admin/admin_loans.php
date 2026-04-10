@@ -247,7 +247,7 @@ function openSettleModal(loanId, memberName, memberCode, balance) {
   const content = document.getElementById('settleLoanContent');
 
   // Load payment history and confirmation form
-  fetch(`admin_loans.php?action=get_settle_form&loan_id=${loanId}`)
+  fetch(appendCurrentContextToUrl(`admin_loans.php?action=get_settle_form&loan_id=${loanId}`))
     .then(response => response.text())
     .then(html => {
       content.innerHTML = html;

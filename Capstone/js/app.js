@@ -252,6 +252,54 @@ function initActionHandlers() {
   }
 }
 
+function preserveContextInNavigation() {
+  const params = new URLSearchParams(window.location.search);
+  const adminCtx = params.get('admin_ctx');
+  const memberCtx = params.get('member_ctx');
+  const contextParam = adminCtx ? ['admin_ctx', adminCtx] : memberCtx ? ['member_ctx', memberCtx] : null;
+  if (!contextParam) return;
+
+  const [key, value] = contextParam;
+  const shouldPreserve = (href) => {
+    if (!href || href.startsWith('#') || href.startsWith('javascript:') || href.startsWith('mailto:') || href.startsWith('tel:')) return false;
+    if (href.includes(key + '=')) return false;
+    return true;
+  };
+
+  document.querySelectorAll('a[href]').forEach((link) => {
+    const href = link.getAttribute('href');
+    if (!shouldPreserve(href)) return;
+    try {
+      const url = new URL(href, window.location.origin + window.location.pathname);
+      url.searchParams.set(key, value);
+      link.setAttribute('href', url.pathname + url.search + (url.hash || ''));
+    } catch (err) {
+      // Ignore malformed hrefs such as mailto: or javascript:
+    }
+  });
+
+  document.querySelectorAll('form').forEach((form) => {
+    if (form.querySelector(`[name="${key}"]`)) return;
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = key;
+    input.value = value;
+    form.appendChild(input);
+  });
+}
+
+function appendCurrentContextToUrl(url) {
+  const params = new URLSearchParams(window.location.search);
+  const adminCtx = params.get('admin_ctx');
+  const memberCtx = params.get('member_ctx');
+  const key = adminCtx ? 'admin_ctx' : memberCtx ? 'member_ctx' : null;
+  const value = adminCtx || memberCtx;
+  if (!key || !value) {
+    return url;
+  }
+  return url + (url.includes('?') ? '&' : '?') + encodeURIComponent(key) + '=' + encodeURIComponent(value);
+}
+
 function togglePasswordVisibility(inputId, btn) {
   const input = document.getElementById(inputId);
   if (input.type === 'password') {
@@ -269,5 +317,6 @@ document.addEventListener('DOMContentLoaded', () => {
   initScrollReveal();
   initTabs();
   setActiveNav();
+  preserveContextInNavigation();
   initActionHandlers();
 });

@@ -248,7 +248,7 @@ function viewMemberDetails(memberId) {
   modalContentDiv.innerHTML = '<div class="text-center text-muted" style="padding:40px;">Loading member details...</div>'; // Show loading state
   openModal('modal-member-details');
 
-  fetch(`admin_member_detail.php?id=${memberId}`)
+  fetch(appendCurrentContextToUrl(`admin_member_detail.php?id=${memberId}`))
     .then(response => {
       if (!response.ok) {
         throw new Error('Network response was not ok');

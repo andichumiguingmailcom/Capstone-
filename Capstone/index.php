@@ -60,6 +60,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $result = $stmt->get_result()->fetch_assoc();
 
         if ($result && password_verify($password, $result['password'])) {
+            $token = bin2hex(random_bytes(16));
+            $_SESSION['admin_contexts'][$token] = [
+                'id'   => $result['id'],
+                'name' => $result['full_name'],
+                'role' => $result['role'],
+            ];
+            $_SESSION['admin_current_ctx'] = $token;
             $_SESSION['user_id']   = $result['id'];
             $_SESSION['user_name'] = $result['full_name'];
             $_SESSION['role']      = $result['role'];
@@ -68,7 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $ip = $_SERVER['REMOTE_ADDR'];
             $db->query("INSERT INTO audit_logs (user_id, action, details, ip_address) VALUES ({$result['id']}, 'LOGIN', 'User logged in', '$ip')");
 
-            header('Location: Admin/admin_dashboard.php');
+            header('Location: Admin/admin_dashboard.php?admin_ctx=' . $token);
             exit;
         } else {
             $error = 'Invalid username or password.';

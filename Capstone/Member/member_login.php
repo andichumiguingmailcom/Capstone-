@@ -57,11 +57,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $member = $stmt->get_result()->fetch_assoc();
 
         if ($member && substr($member['phone'], -4) === $pin) {
+            $token = bin2hex(random_bytes(16));
+            $_SESSION['member_contexts'][$token] = [
+                'id'        => $member['id'],
+                'member_id' => $member['id'],
+                'name'      => $member['full_name'],
+                'role'      => 'member',
+            ];
+            $_SESSION['member_current_ctx'] = $token;
             $_SESSION['user_id']   = $member['id'];
             $_SESSION['member_id'] = $member['id'];
             $_SESSION['user_name'] = $member['full_name'];
             $_SESSION['role']      = 'member';
-            header('Location: member_dashboard.php');
+            header('Location: member_dashboard.php?member_ctx=' . $token);
             exit;
         } else {
             $error = 'Invalid Member ID or PIN.';

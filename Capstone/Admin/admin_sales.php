@@ -9,11 +9,17 @@
 <body>
 <?php
 require_once '../includes/config.php';
-requireLogin('book_keeper');
+requireLogin(['general_manager','book_keeper','cashier']);
 $activePage = 'sales';
 $db = getDB();
+$user = getCurrentUser();
+$isCashier = $user['role'] === 'cashier';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!$isCashier) {
+        header('Location: admin_sales.php?msg=' . urlencode('Unauthorized action.'));
+        exit;
+    }
     $action = clean($_POST['action'] ?? '');
     $uid = $_SESSION['user_id'];
 
@@ -34,10 +40,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $creditMonths = 0;
         $interestRate = 0;
         if ($payType === 'credit') {
-            $creditMonths = (int)($_POST['credit_months'] ?? 1);
-            // Interest rates based on months (progressive rates)
-            $interestRates = [1 => 5, 2 => 8, 3 => 12, 6 => 20, 12 => 30];
-            $interestRate = $interestRates[$creditMonths] ?? 5;
+            $creditMonths = 1;
+            $interestRate = 10;
             $interestAmount = $total * ($interestRate / 100);
             $total += $interestAmount;
         }
@@ -81,9 +85,11 @@ $monthTotal = $db->query("SELECT SUM(total) as s FROM sales WHERE MONTH(sale_dat
   <div class="topbar">
     <div class="topbar-title">Sales Recording</div>
     <div class="topbar-actions">
+      <?php if ($isCashier): ?>
       <button class="btn btn-primary" onclick="openModal('modal-add-sale')">
         🛒 Record New Sale
       </button>
+      <?php endif; ?>
     </div>
   </div>
 
@@ -150,12 +156,8 @@ $monthTotal = $db->query("SELECT SUM(total) as s FROM sales WHERE MONTH(sale_dat
         <div class="form-row">
           <div class="form-group">
             <label class="form-label" style="font-size:0.78rem;">Months to Pay</label>
-            <select name="credit_months" class="form-control" id="creditMonths" onchange="calcTotal()">
-              <option value="1">1 month (5% interest)</option>
-              <option value="2">2 months (8% interest)</option>
-              <option value="3">3 months (12% interest)</option>
-              <option value="6">6 months (20% interest)</option>
-              <option value="12">12 months (30% interest)</option>
+            <select name="credit_months" class="form-control" id="creditMonths" onchange="calcTotal()" disabled>
+              <option value="1">1 month (10% interest)</option>
             </select>
           </div>
           <div class="form-group">
@@ -242,12 +244,12 @@ function calcTotal() {
   let monthlyPayment = 0;
 
   if (paymentType === 'credit') {
-    const creditMonths = parseInt(document.getElementById('creditMonths').value) || 1;
-    const interestRates = {1: 5, 2: 8, 3: 12, 6: 20, 12: 30};
-    const interestRate = interestRates[creditMonths] || 5;
+    const creditMonths = 1;
+    const interestRate = 10;
     const interestAmount = subtotal * (interestRate / 100);
     total = subtotal + interestAmount;
     monthlyPayment = total / creditMonths;
+    document.getElementById('creditMonths').value = creditMonths;
     document.getElementById('monthlyPayment').value = '₱' + monthlyPayment.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   } else {
     document.getElementById('monthlyPayment').value = '';

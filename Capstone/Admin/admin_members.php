@@ -9,12 +9,19 @@
 <body>
 <?php
 require_once '../includes/config.php';
-requireLogin(['general_manager','book_keeper','collector','loan_officer']);
+requireLogin(['general_manager','book_keeper','collector','loan_officer','cashier']);
 $activePage = 'members';
 $db = getDB();
+$user = getCurrentUser();
+$isCashier = $user['role'] === 'cashier';
+$isGeneralManager = $user['role'] === 'general_manager';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = clean($_POST['action'] ?? '');
+    if (!$isGeneralManager && in_array($action, ['update_status', 'upload_doc'], true)) {
+        header('Location: admin_members.php?msg=' . urlencode('Unauthorized action.'));
+        exit;
+    }
     if ($action === 'update_status') {
         $id = (int)$_POST['id']; $status = clean($_POST['status']);
         $db->query("UPDATE members SET status='$status' WHERE id=$id");
@@ -140,9 +147,11 @@ $activeMembers = $db->query("SELECT COUNT(*) as c FROM members WHERE status='act
                   <span class="badge <?= $sb[$m['status']] ?>"><?= ucfirst($m['status']) ?></span>
                 </td>
                 <td>
-                  <button class="btn btn-sm btn-outline" onclick="changeStatus(<?= $m['id'] ?>,'<?= $m['status'] ?>')">Edit Status</button>
+                  <?php if ($isGeneralManager): ?>
+                    <button class="btn btn-sm btn-outline" onclick="changeStatus(<?= $m['id'] ?>,'<?= $m['status'] ?>')">Edit Status</button>
+                    <button class="btn btn-sm btn-primary" onclick="openUploadModal(<?= $m['id'] ?>, '<?= addslashes($m['full_name']) ?>')">📎 Upload</button>
+                  <?php endif; ?>
                   <button class="btn btn-sm btn-ghost" onclick="viewMemberDetails(<?= $m['id'] ?>)">View</button>
-                  <button class="btn btn-sm btn-primary" onclick="openUploadModal(<?= $m['id'] ?>, '<?= addslashes($m['full_name']) ?>')">📎 Upload</button>
                   <button class="btn btn-sm btn-outline" onclick="viewMemberDocuments(<?= $m['id'] ?>, '<?= addslashes($m['full_name']) ?>')">📄 Documents</button>
                 </td>
               </tr>

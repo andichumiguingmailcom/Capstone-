@@ -9,49 +9,96 @@
 <body>
 <?php
 require_once '../includes/config.php';
-requireLogin(['general_manager','collector','loan_officer']);
+requireLogin(['general_manager','collector','loan_officer','cashier']);
 $activePage = 'loan_apps';
 $db = getDB();
+$user = getCurrentUser();
+$isLoanOfficer = $user['role'] === 'loan_officer';
+$isGeneralManager = $user['role'] === 'general_manager';
+$isCashier = $user['role'] === 'cashier';
 
-// Handle approve/reject
+// Handle role-based loan workflow
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $id     = (int)($_POST['id'] ?? 0);
-    $action = clean($_POST['action'] ?? '');
+    $id      = (int)($_POST['id'] ?? 0);
+    $action  = clean($_POST['action'] ?? '');
     $remarks = clean($_POST['remarks'] ?? '');
 
-    if ($id && in_array($action, ['approved','rejected'])) {
-        $uid = $_SESSION['user_id'];
-        $stmt = $db->prepare("UPDATE loan_applications SET status=?, approved_by=?, approved_at=NOW(), remarks=? WHERE id=?");
-        $stmt->bind_param('sisi', $action, $uid, $remarks, $id);
+    if (!$id) {
+        header('Location: admin_loan_applications.php?msg=' . urlencode('Invalid application.'));
+        exit;
+    }
+
+    if (in_array($action, ['approve_officer', 'reject_officer'], true)) {
+        if (!$isLoanOfficer) {
+            header('Location: unauthorized.php');
+            exit;
+        }
+
+        $status = $action === 'approve_officer' ? 'approved' : 'rejected';
+        $stmt = $db->prepare("UPDATE loan_applications SET status=?, approved_by=?, approved_at=NOW(), remarks=? WHERE id=? AND status='pending'");
+        $stmt->bind_param('sisi', $status, $_SESSION['user_id'], $remarks, $id);
         $stmt->execute();
 
-        // If approved, create loan record
-        if ($action === 'approved') {
-            $app = $db->query("SELECT la.*, lt.type_name, lt.interest FROM loan_applications la 
-                               JOIN loan_types lt ON la.loan_type_id = lt.id WHERE la.id=$id")->fetch_assoc();
-            if ($app) {
-                // Get member's capital share to determine actual interest rate
-                $capitalShare = $db->query("SELECT COALESCE(amount, 0) as amount FROM capital_shares WHERE member_id={$app['member_id']}")->fetch_assoc()['amount'] ?? 0;
-                
-                // Calculate actual interest rate based on loan type and capital share
-                $interestRate = $app['interest'];
-                if ($app['type_name'] === 'Regular Loan') {
-                    $interestRate = 3.0;
-                } elseif ($app['type_name'] === 'Special Loan') {
-                    $interestRate = $capitalShare >= 75001 ? 1.5 : 2.0;
-                } elseif ($app['type_name'] === 'Spring Board Loan') {
-                    $interestRate = $capitalShare >= 75001 ? 1.5 : 2.5;
-                }
-                
-                $total_interest_factor = ($interestRate / 100) * $app['term_months'];
-                $monthly = round($app['amount'] * (1 + $total_interest_factor) / $app['term_months'], 2);
-                $due = date('Y-m-d', strtotime('+1 month'));
-                $db->query("INSERT INTO loans (application_id, member_id, principal, balance, monthly_due, due_date) 
-                    VALUES ($id, {$app['member_id']}, {$app['amount']}, {$app['amount']}, $monthly, '$due')");
-                $db->query("UPDATE loan_applications SET status='disbursed' WHERE id=$id");
-            }
+        header('Location: admin_loan_applications.php?msg=' . urlencode('Application ' . ($status === 'approved' ? 'approved' : 'rejected') . ' successfully.'));
+        exit;
+    }
+
+    if (in_array($action, ['approve_gm', 'reject_gm'], true)) {
+        if (!$isGeneralManager) {
+            header('Location: unauthorized.php');
+            exit;
         }
-        header('Location: admin_loan_applications.php?msg=' . urlencode("Application {$action} successfully."));
+
+        $current = $db->query("SELECT la.status, u.role AS approved_by_role FROM loan_applications la LEFT JOIN users u ON la.approved_by=u.id WHERE la.id=$id")->fetch_assoc();
+        if (!$current || $current['status'] !== 'approved' || $current['approved_by_role'] !== 'loan_officer') {
+            header('Location: admin_loan_applications.php?msg=' . urlencode('Application must be approved by loan officer first.'));
+            exit;
+        }
+
+        $status = $action === 'approve_gm' ? 'approved' : 'rejected';
+        $stmt = $db->prepare("UPDATE loan_applications SET status=?, approved_by=?, approved_at=NOW(), remarks=? WHERE id=?");
+        $stmt->bind_param('sisi', $status, $_SESSION['user_id'], $remarks, $id);
+        $stmt->execute();
+
+        header('Location: admin_loan_applications.php?msg=' . urlencode('Application ' . ($status === 'approved' ? 'approved by GM' : 'rejected by GM') . ' successfully.'));
+        exit;
+    }
+
+    if ($action === 'disburse') {
+        if (!$isCashier) {
+            header('Location: unauthorized.php');
+            exit;
+        }
+
+        $app = $db->query("SELECT la.*, lt.type_name, lt.interest, u.role AS approved_by_role FROM loan_applications la 
+                           LEFT JOIN loan_types lt ON la.loan_type_id = lt.id 
+                           LEFT JOIN users u ON la.approved_by=u.id 
+                           WHERE la.id=$id AND la.status='approved'")->fetch_assoc();
+
+        if (!$app || $app['approved_by_role'] !== 'general_manager') {
+            header('Location: admin_loan_applications.php?msg=' . urlencode('Application must be approved by general manager first.'));
+            exit;
+        }
+
+        $capitalShare = $db->query("SELECT COALESCE(amount, 0) as amount FROM capital_shares WHERE member_id={$app['member_id']}")->fetch_assoc()['amount'] ?? 0;
+        $interestRate = $app['interest'];
+        if ($app['type_name'] === 'Regular Loan') {
+            $interestRate = 3.0;
+        } elseif ($app['type_name'] === 'Special Loan') {
+            $interestRate = $capitalShare >= 75001 ? 1.5 : 2.0;
+        } elseif ($app['type_name'] === 'Spring Board Loan') {
+            $interestRate = $capitalShare >= 75001 ? 1.5 : 2.5;
+        }
+
+        $total_interest_factor = ($interestRate / 100) * $app['term_months'];
+        $monthly = round($app['amount'] * (1 + $total_interest_factor) / $app['term_months'], 2);
+        $due = date('Y-m-d', strtotime('+1 month'));
+
+        $db->query("INSERT INTO loans (application_id, member_id, principal, balance, monthly_due, due_date) 
+            VALUES ($id, {$app['member_id']}, {$app['amount']}, {$app['amount']}, $monthly, '$due')");
+        $db->query("UPDATE loan_applications SET status='disbursed' WHERE id=$id");
+
+        header('Location: admin_loan_applications.php?msg=' . urlencode('Application disbursed successfully.'));
         exit;
     }
 }
@@ -61,10 +108,12 @@ $filterStatus = clean($_GET['status'] ?? '');
 
 $where = $filterStatus ? "WHERE la.status='$filterStatus'" : '';
 $applications = $db->query("SELECT la.*, CONCAT_WS(' ', m.first_name, m.last_name) as full_name, m.member_id AS mem_code, lt.type_name, lt.interest,
+    u.role AS approved_by_role,
     (SELECT id FROM loans WHERE application_id = la.id LIMIT 1) AS loan_id
     FROM loan_applications la 
     JOIN members m ON la.member_id = m.id 
     JOIN loan_types lt ON la.loan_type_id = lt.id
+    LEFT JOIN users u ON la.approved_by = u.id
     $where
     ORDER BY la.applied_at DESC");
 $loanTypes = $db->query("SELECT * FROM loan_types ORDER BY type_name");
@@ -78,7 +127,9 @@ $members   = $db->query("SELECT id, member_id, CONCAT_WS(' ', first_name, last_n
   <div class="topbar">
     <div class="topbar-title">Loan Applications</div>
     <div class="topbar-actions">
-      <button class="btn btn-primary" onclick="openModal('modal-add-loan')">+ New Application</button>
+      <?php if (!$isCashier): ?>
+        <button class="btn btn-primary" onclick="openModal('modal-add-loan')">+ New Application</button>
+      <?php endif; ?>
     </div>
   </div>
 
@@ -136,11 +187,14 @@ $members   = $db->query("SELECT id, member_id, CONCAT_WS(' ', first_name, last_n
                   <span class="badge <?= $b ?>"><?= ucfirst($row['status']) ?></span>
                 </td>
                 <td>
-                  <?php if ($row['status'] === 'pending'): ?>
-                  <button class="btn btn-sm btn-primary" 
-                    onclick="approveApp(<?= $row['id'] ?>, 'approved')">✅ Approve</button>
-                  <button class="btn btn-sm btn-danger" 
-                    onclick="approveApp(<?= $row['id'] ?>, 'rejected')">❌ Reject</button>
+                  <?php if ($row['status'] === 'pending' && $isLoanOfficer): ?>
+                    <button class="btn btn-sm btn-primary" onclick="showActionModal(<?= $row['id'] ?>, 'approve_officer')">✅ Approve</button>
+                    <button class="btn btn-sm btn-danger" onclick="showActionModal(<?= $row['id'] ?>, 'reject_officer')">❌ Reject</button>
+                  <?php elseif ($row['status'] === 'approved' && $isGeneralManager && $row['approved_by_role'] === 'loan_officer'): ?>
+                    <button class="btn btn-sm btn-primary" onclick="showActionModal(<?= $row['id'] ?>, 'approve_gm')">✅ Approve</button>
+                    <button class="btn btn-sm btn-danger" onclick="showActionModal(<?= $row['id'] ?>, 'reject_gm')">❌ Reject</button>
+                  <?php elseif ($row['status'] === 'approved' && $isCashier && $row['approved_by_role'] === 'general_manager'): ?>
+                    <button class="btn btn-sm btn-primary" onclick="showActionModal(<?= $row['id'] ?>, 'disburse')">📥 Disburse</button>
                   <?php endif; ?>
                   <button class="btn btn-sm btn-ghost" 
                     onclick="viewApplication(this)"
@@ -150,7 +204,7 @@ $members   = $db->query("SELECT id, member_id, CONCAT_WS(' ', first_name, last_n
                     data-member-id="<?= htmlspecialchars($row['mem_code'], ENT_QUOTES) ?>"
                     data-loan-type="<?= htmlspecialchars($row['type_name'], ENT_QUOTES) ?>"
                     data-date-applied="<?= htmlspecialchars(date('Y-m-d', strtotime($row['applied_at'])), ENT_QUOTES) ?>"
-                    data-date-decision="<?= $row['approved_at'] ? htmlspecialchars(date('Y-m-d', strtotime($row['approved_at'])), ENT_QUOTES) : '' ?>"
+                    data-date-decision="<?= $row['approved_at'] ? htmlspecialchars(date('Y-m-d', strtotime($row['approved_at'])), ENT_QUOTES) : 'Pending' ?>"
                     data-status="<?= htmlspecialchars($row['status'], ENT_QUOTES) ?>"
                     data-remarks="<?= htmlspecialchars($row['remarks'] ?? 'No remarks', ENT_QUOTES) ?>"
                   >
@@ -259,12 +313,16 @@ $members   = $db->query("SELECT id, member_id, CONCAT_WS(' ', first_name, last_n
 
 <script src="../js/app.js"></script>
 <script>
-function approveApp(id, action) {
+function showActionModal(id, action) {
   document.getElementById('actionId').value = id;
   document.getElementById('actionType').value = action;
-  document.getElementById('actionTitle').textContent = action === 'approved' ? '✅ Approve Application' : '❌ Reject Application';
-  document.getElementById('actionBtn').className = 'btn ' + (action === 'approved' ? 'btn-primary' : 'btn-danger');
-  document.getElementById('actionBtn').textContent = action === 'approved' ? 'Approve' : 'Reject';
+  const isApprove = action === 'approve_officer' || action === 'approve_gm';
+  const isReject = action === 'reject_officer' || action === 'reject_gm';
+  const isDisburse = action === 'disburse';
+
+  document.getElementById('actionTitle').textContent = isDisburse ? '📥 Disburse Loan' : (isApprove ? '✅ Approve Application' : '❌ Reject Application');
+  document.getElementById('actionBtn').className = 'btn ' + (isDisburse || isApprove ? 'btn-primary' : 'btn-danger');
+  document.getElementById('actionBtn').textContent = isDisburse ? 'Disburse' : (isApprove ? 'Approve' : 'Reject');
   openModal('modal-action');
 }
 function viewApplication(button) {

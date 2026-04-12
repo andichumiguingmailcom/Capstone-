@@ -2,7 +2,7 @@
 require_once '../includes/config.php';
 // The roles here should ideally match those allowed to view members in admin_members.php
 // This ensures the AJAX endpoint is also protected.
-requireLogin(['general_manager','book_keeper','collector','loan_officer']);
+requireLogin(['general_manager','book_keeper','collector','loan_officer','cashier']);
 $db = getDB();
 
 $id = (int)($_GET['id'] ?? 0);

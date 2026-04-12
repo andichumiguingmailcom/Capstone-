@@ -10,19 +10,19 @@ $user = getCurrentUser();
 
   <nav class="sidebar-nav">
     <div class="nav-section-label">Dashboard</div>
-    <?php if (in_array($user['role'], ['general_manager','book_keeper','collector'], true)): ?>
+    <?php if (in_array($user['role'], ['general_manager','book_keeper','collector','cashier'], true)): ?>
     <a href="<?= appendContextToUrl('admin_dashboard.php') ?>" class="nav-item <?= ($activePage??'') === 'dashboard' ? 'active' : '' ?>">
       <span class="nav-icon">📊</span> Dashboard
     </a>
     <?php endif; ?>
 
     <div class="nav-section-label">Members</div>
-    <?php if (in_array($user['role'], ['general_manager','book_keeper','collector','loan_officer'], true)): ?>
+    <?php if (in_array($user['role'], ['general_manager','book_keeper','collector','loan_officer','cashier'], true)): ?>
     <a href="<?= appendContextToUrl('admin_members.php') ?>" class="nav-item <?= ($activePage??'') === 'members' ? 'active' : '' ?>">
       <span class="nav-icon">👥</span> Member List
     </a>
     <?php endif; ?>
-    <?php if (in_array($user['role'], ['general_manager','book_keeper'], true)): ?>
+    <?php if (in_array($user['role'], ['general_manager','book_keeper','cashier'], true)): ?>
     <a href="<?= appendContextToUrl('admin_capital_shares.php') ?>" class="nav-item <?= ($activePage??'') === 'capital_shares' ? 'active' : '' ?>">
       <span class="nav-icon">💰</span> Capital Shares
     </a>
@@ -33,7 +33,7 @@ $user = getCurrentUser();
     </a>
     <?php endif; ?>
     <div class="nav-section-label">Loans</div>
-    <?php if (in_array($user['role'], ['general_manager','collector','loan_officer'], true)): ?>
+    <?php if (in_array($user['role'], ['general_manager','collector','loan_officer','cashier'], true)): ?>
     <a href="<?= appendContextToUrl('admin_loan_applications.php') ?>" class="nav-item <?= ($activePage??'') === 'loan_apps' ? 'active' : '' ?>">
       <span class="nav-icon">📝</span> Loan Applications
     </a>
@@ -49,7 +49,7 @@ $user = getCurrentUser();
     </a>
     <?php endif; ?>
     <div class="nav-section-label">Store</div>
-    <?php if (in_array($user['role'], ['general_manager','book_keeper'], true)): ?>
+    <?php if (in_array($user['role'], ['general_manager','book_keeper','cashier'], true)): ?>
     <a href="<?= appendContextToUrl('admin_inventory.php') ?>" class="nav-item <?= ($activePage??'') === 'inventory' ? 'active' : '' ?>">
       <span class="nav-icon">📦</span> Inventory
     </a>

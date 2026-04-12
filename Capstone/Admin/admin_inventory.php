@@ -9,12 +9,18 @@
 <body>
 <?php
 require_once '../includes/config.php';
-requireLogin('book_keeper');
+requireLogin(['general_manager','book_keeper','cashier']);
 $activePage = 'inventory';
 $db = getDB();
+$user = getCurrentUser();
+$isCashier = $user['role'] === 'cashier';
 
-// Handle stock-in / stock-out / delete / add dsadaasddas
+// Cashiers are view-only on inventory
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if ($isCashier) {
+        header('Location: admin_inventory.php?msg=' . urlencode('Unauthorized action.'));
+        exit;
+    }
     $action = clean($_POST['action'] ?? '');
     $uid    = $_SESSION['user_id'];
 
@@ -89,7 +95,9 @@ $groceryCount  = $db->query("SELECT COUNT(*) as c FROM products WHERE category='
   <div class="topbar">
     <div class="topbar-title">Inventory Management</div>
     <div class="topbar-actions">
-      <button class="btn btn-primary" onclick="openModal('modal-add-product')">+ Add Product</button>
+      <?php if (!$isCashier): ?>
+        <button class="btn btn-primary" onclick="openModal('modal-add-product')">+ Add Product</button>
+      <?php endif; ?>
     </div>
   </div>
 
@@ -161,6 +169,7 @@ $groceryCount  = $db->query("SELECT COUNT(*) as c FROM products WHERE category='
                     </div>
                   </td>
                   <td>
+                    <?php if (!$isCashier): ?>
                     <button class="btn btn-sm btn-primary" onclick="stockAction(<?= $p['id'] ?>,'<?= addslashes($p['name']) ?>','stock_in')">+ In</button>
                     <button class="btn btn-sm btn-outline" onclick="stockAction(<?= $p['id'] ?>,'<?= addslashes($p['name']) ?>','stock_out')">- Out</button>
                     <form method="POST" style="display:inline">
@@ -168,6 +177,9 @@ $groceryCount  = $db->query("SELECT COUNT(*) as c FROM products WHERE category='
                       <input type="hidden" name="product_id" value="<?= $p['id'] ?>">
                       <button type="submit" class="btn btn-sm btn-danger">🗑️</button>
                     </form>
+                  <?php else: ?>
+                    <span class="text-muted">View only</span>
+                  <?php endif; ?>
                   </td>
                 </tr>
                 <?php endwhile; ?>

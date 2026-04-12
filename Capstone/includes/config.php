@@ -165,7 +165,8 @@ function requireLogin($role = null) {
     $allowedRoles[] = 'general_manager'; // GM has override rights
 
     if (!in_array($_SESSION['role'], $allowedRoles, true)) {
-        header('Location: unauthorized.php');
+        $root = getAppRoot();
+        header('Location: ' . ($root ?: '') . '/unauthorized.php');
         exit;
     }
 }

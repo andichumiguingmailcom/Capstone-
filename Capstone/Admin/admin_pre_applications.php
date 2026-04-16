@@ -42,34 +42,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (in_array($action, ['approved','rejected'])) {
         // Fetch applicant details for notification before updating
-        $stmt = $db->prepare("SELECT first_name, email FROM pre_applications WHERE id = ?");
+        $stmt = $db->prepare("SELECT * FROM pre_applications WHERE id = ?");
         $stmt->bind_param("i", $id);
         $stmt->execute();
-        $applicant = $stmt->get_result()->fetch_assoc();
+        $appData = $stmt->get_result()->fetch_assoc();
 
-        // If approved, automatically add to members
-        if ($action === 'approved') {
-            $appData = $db->query("SELECT * FROM pre_applications WHERE id=$id")->fetch_assoc();
+        if ($action === 'approved' && $appData) {
             $memberId = generateMemberID($db);
             $dateJoined = date('Y-m-d');
             $status = 'active';
-            $stmt = $db->prepare("INSERT INTO members (member_id, first_name, middle_name, last_name, email, phone, street, barangay, city, province, date_joined, status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)");
-            $stmt->bind_param('ssssssssssss', $memberId, $appData['first_name'], $appData['middle_name'], $appData['last_name'], $appData['email'], $appData['phone'], $appData['street'], $appData['barangay'], $appData['city'], $appData['province'], $dateJoined, $status);
-            $stmt->execute();
-            $newMemberId = $db->insert_id;
-
-            // Create initial capital share record
-            $stmt = $db->prepare("INSERT INTO capital_shares (member_id, amount, updated_by) VALUES (?, ?, ?)");
-            $stmt->bind_param('idi', $newMemberId, $appData['initial_capital'], $_SESSION['user_id']);
-            $stmt->execute();
+            $stmtMem = $db->prepare("INSERT INTO members (member_id, first_name, middle_name, last_name, email, phone, street, barangay, city, province, date_joined, status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)");
+            $stmtMem->bind_param('ssssssssssss', $memberId, $appData['first_name'], $appData['middle_name'], $appData['last_name'], $appData['email'], $appData['phone'], $appData['street'], $appData['barangay'], $appData['city'], $appData['province'], $dateJoined, $status);
+            if ($stmtMem->execute()) {
+                $newMemberId = $db->insert_id;
+                // Create initial capital share record
+                $stmtCap = $db->prepare("INSERT INTO capital_shares (member_id, amount, updated_by) VALUES (?, ?, ?)");
+                $stmtCap->bind_param('idi', $newMemberId, $appData['initial_capital'], $_SESSION['user_id']);
+                $stmtCap->execute();
+            }
         }
 
         // Update status in pre_applications table
-        $db->query("UPDATE pre_applications SET status='$action', admin_notes='$notes', verified_at=NOW() WHERE id=$id");
+        $stmtUpdate = $db->prepare("UPDATE pre_applications SET status=?, admin_notes=?, verified_at=NOW() WHERE id=?");
+        $stmtUpdate->bind_param('ssi', $action, $notes, $id);
+        $stmtUpdate->execute();
 
         // Send Email Notification via PHPMailer
         $emailError = '';
-        if ($applicant && !empty($applicant['email'])) {
+        if ($appData && !empty($appData['email'])) {
             $mail = new PHPMailer(true);
             try {
                 // SMTP Server Settings
@@ -89,19 +89,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ],
                 ];
                 $mail->CharSet    = 'UTF-8';
-                $mail->setFrom(SMTP_USERNAME, MAIL_FROM_NAME); // for Gmail SMTP, from should match authenticated account
+                $mail->setFrom(SMTP_USERNAME, MAIL_FROM_NAME);
                 $mail->addReplyTo(MAIL_FROM, MAIL_FROM_NAME);
                 $mail->SMTPDebug  = 0; // Set to 2 for debugging if needed
                 $mail->Debugoutput = function($str, $level) {
                     error_log("PHPMailer debug level {$level}: {$str}");
                 };
 
-                $mail->addAddress($applicant['email'], $applicant['first_name']);
+                $mail->addAddress($appData['email'], $appData['first_name']);
                 $mail->isHTML(true);
                 $mail->Subject = 'Membership Application Status Update';
                 
                 $statusLabel = ucfirst($action);
-                $mail->Body = "Hello " . htmlspecialchars($applicant['first_name']) . ",<br><br>Your membership application at CoopIMS has been <b>$statusLabel</b>.<br>Admin Remarks: " . (!empty($notes) ? htmlspecialchars($notes) : "None") . "<br><br>Thank you,<br>CoopIMS Team";
+                $mail->Body = "Hello " . htmlspecialchars($appData['first_name']) . ",<br><br>Your membership application at CoopIMS has been <b>$statusLabel</b>.<br>Admin Remarks: " . (!empty($notes) ? htmlspecialchars($notes) : "None") . "<br><br>Thank you,<br>CoopIMS Team";
                 $mail->send();
             } catch (Exception $e) {
                 $emailError = "Mailer Error: " . $e->getMessage();
@@ -159,7 +159,14 @@ $apps = $db->query("SELECT *,
               <?php while ($a = $apps->fetch_assoc()):
                 $b = ['pending'=>'badge-gold','approved'=>'badge-green','rejected'=>'badge-red'][$a['status']] ?? 'badge-gray';
               ?>
-              <tr onclick="reviewApp(<?= $a['id'] ?>,'<?= addslashes($a['full_name']) ?>','<?= $a['status'] ?>','<?= addslashes($a['admin_notes'] ?? '') ?>')" style="cursor:pointer;" title="Click to review or view details">
+              <tr onclick="reviewApp(this)" 
+                  style="cursor:pointer;" 
+                  title="Click to review or view details"
+                  data-id="<?= $a['id'] ?>"
+                  data-name="<?= htmlspecialchars($a['full_name']) ?>"
+                  data-status="<?= $a['status'] ?>"
+                  data-notes="<?= htmlspecialchars($a['admin_notes'] ?? '') ?>"
+                  data-details='<?= htmlspecialchars($a['details_json'] ?? '{}', ENT_QUOTES, 'UTF-8') ?>'>
                 <td class="text-muted">#<?= $a['id'] ?></td>
                 <td><div class="fw-600"><?= htmlspecialchars($a['full_name']) ?></div></td> 
                 <td><div><?= htmlspecialchars($a['email']) ?></div><div class="text-muted text-sm"><?= $a['phone'] ?></div></td>
@@ -191,10 +198,15 @@ $apps = $db->query("SELECT *,
 </div>
 
 <div class="modal-overlay" id="modal-review">
-  <div class="modal">
+  <div class="modal" style="max-width: 800px;">
     <button class="modal-close" onclick="closeModal('modal-review')">✕</button>
     <div class="modal-title" id="reviewTitle">Review Application</div>
     <p id="reviewName" style="color:var(--text-muted);margin-bottom:16px;"></p>
+    
+    <div id="applicationFullDetails" style="margin-bottom: 20px; max-height: 400px; overflow-y: auto; background: #f9fafb; padding: 20px; border-radius: 12px; border: 1px solid #e5e7eb;">
+      <!-- Data injected via JavaScript -->
+    </div>
+
     <form method="POST" id="approvalForm">
       <input type="hidden" name="id" id="reviewId">
       <input type="hidden" name="action" id="actionInput" value="">
@@ -211,9 +223,58 @@ $apps = $db->query("SELECT *,
 
 <script src="../js/app.js"></script>
 <script>
-function reviewApp(id, name, status, notes) {
+function reviewApp(row) {
+  const id = row.dataset.id;
+  const name = row.dataset.name;
+  const status = row.dataset.status;
+  const notes = row.dataset.notes;
+  const detailsJson = row.dataset.details;
+
   document.getElementById('reviewId').value = id;
   document.getElementById('reviewName').textContent = 'Applicant: ' + name;
+
+  let details = {};
+  try {
+    details = JSON.parse(detailsJson);
+  } catch (e) {
+    console.error("Error parsing application details:", e);
+  }
+  const detailsDiv = document.getElementById('applicationFullDetails');
+  
+  let html = `<div style="display:grid; grid-template-columns: 1fr 1fr; gap: 15px; font-size: 0.85rem;">`;
+  html += `<div><strong>Birth Date:</strong> ${details.dob || '—'}</div>`;
+  html += `<div><strong>Civil Status:</strong> ${details.civil_status || '—'}</div>`;
+  html += `<div><strong>Sex:</strong> ${details.sex || '—'}</div>`;
+  html += `<div><strong>Occupation:</strong> ${details.occupation || '—'}</div>`;
+  html += `<div><strong>Residence:</strong> ${(details.residence_types || []).join(', ') || '—'}</div>`;
+  html += `</div>`;
+
+  if (details.spouse && details.spouse.name) {
+    html += `<div style="margin-top:15px; padding-top:10px; border-top:1px solid #eee;">`;
+    html += `<strong>Spouse:</strong> ${details.spouse.name} | ${details.spouse.job || 'No Job info'}`;
+    html += `</div>`;
+  }
+
+  if (details.loan_details) {
+    html += `<div style="margin-top:15px; background:#fff; padding:10px; border-radius:8px; border:1px solid #ddd;">`;
+    html += `<strong>Requested Loan:</strong> ${(details.loan_details.types || []).join(', ') || '—'}<br>`;
+    html += `Term: ${details.loan_details.term} | Mode: ${details.loan_details.mode}`;
+    html += `</div>`;
+  }
+
+  if (details.financials) {
+    html += `<div style="margin-top:10px; color:#1a6b3a;"><strong>Monthly Net Income:</strong> ₱${parseFloat(details.financials.net || 0).toLocaleString()}</div>`;
+  }
+
+  if (details.dependents && details.dependents.length > 0) {
+    html += `<div style="margin-top:15px;"><strong>Dependents:</strong><ul style="margin:5px 0 0 20px; padding:0;">`;
+    details.dependents.forEach(d => {
+      html += `<li>${d.name} (${d.rel}, Age: ${d.age})</li>`;
+    });
+    html += `</ul></div>`;
+  }
+
+  detailsDiv.innerHTML = html;
   
   const notesField = document.getElementById('reviewNotes');
   const footer = document.getElementById('reviewFooter');

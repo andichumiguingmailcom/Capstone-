@@ -44,6 +44,43 @@
       color: #7a1e2c !important;
       border: 1px solid rgba(122, 30, 44, 0.2) !important;
     }
+    h3 {
+      border-bottom: 2px solid rgba(122, 30, 44, 0.1);
+      padding-bottom: 10px;
+      margin-top: 32px;
+      margin-bottom: 20px;
+      font-size: 1.2rem;
+      text-transform: uppercase;
+      color: #7a1e2c !important;
+    }
+    .checkbox-group {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      background: #fff;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid #d1d5db;
+    }
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.9rem;
+      color: #333;
+    }
+    .loan-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    .loan-table th, .loan-table td { border: 1px solid #d1d5db; padding: 8px; text-align: left; }
+    .loan-table th { background: #eee; color: #7a1e2c; font-size: 0.85rem; }
+    .section-title {
+      background: #7a1e2c;
+      color: white;
+      padding: 10px 15px;
+      border-radius: 8px;
+      margin-top: 30px;
+      margin-bottom: 20px;
+      font-size: 1.1rem;
+    }
   </style>
 </head>
 <body>
@@ -74,16 +111,77 @@ define('SMTP_PORT', 587);
 $msg = ''; $submitted = false;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $fname = clean($_POST['first_name'] ?? '');
-    $mname = clean($_POST['middle_name'] ?? '');
-    $lname = clean($_POST['last_name'] ?? '');
+    $name = clean($_POST['name'] ?? '');
     $email = clean($_POST['email'] ?? '');
     $phone = clean($_POST['phone'] ?? '');
-    $street = clean($_POST['street'] ?? '');
-    $brgy   = clean($_POST['barangay'] ?? '');
-    $city   = clean($_POST['city'] ?? '');
-    $prov   = clean($_POST['province'] ?? '');
+    $address = clean($_POST['address'] ?? '');
     $initialCapital = (float)($_POST['initial_capital'] ?? 5000);
+
+    // Splitting name for existing database schema compatibility
+    $nameParts = explode(' ', $name);
+    $fname = $nameParts[0] ?? '';
+    $lname = count($nameParts) > 1 ? end($nameParts) : $name;
+    $mname = count($nameParts) > 2 ? implode(' ', array_slice($nameParts, 1, -1)) : '';
+
+    // Simple address mapping to the street column
+    $street = $address;
+    $brgy = '';
+    $city = '';
+    $prov = '';
+
+    // Capture all the new detailed fields into a structured array
+    $extraDetails = [
+        'dob' => clean($_POST['dob'] ?? ''),
+        'age' => clean($_POST['age'] ?? ''),
+        'sex' => clean($_POST['sex'] ?? ''),
+        'civil_status' => clean($_POST['civil_status'] ?? ''),
+        'res_cert' => clean($_POST['res_cert'] ?? ''),
+        'occupation' => clean($_POST['occupation'] ?? ''),
+        'residence_types' => $_POST['residence'] ?? [],
+        'spouse' => [
+            'name' => clean($_POST['spouse'] ?? ''),
+            'dob' => clean($_POST['spouse_dob'] ?? ''),
+            'job' => clean($_POST['spouse_job'] ?? '')
+        ],
+        'business' => [
+            'name' => clean($_POST['business'] ?? ''),
+            'facebook' => clean($_POST['facebook'] ?? '')
+        ],
+        'beneficiary' => [
+            'name' => clean($_POST['beneficiary'] ?? ''),
+            'dob' => clean($_POST['ben_dob'] ?? ''),
+            'sex' => clean($_POST['ben_sex'] ?? ''),
+            'relationship' => clean($_POST['relationship'] ?? '')
+        ],
+        'loan_details' => [
+            'types' => $_POST['loan_type'] ?? [],
+            'others' => clean($_POST['others'] ?? ''),
+            'rate' => clean($_POST['rate'] ?? ''),
+            'term' => clean($_POST['term'] ?? ''),
+            'mode' => clean($_POST['mode'] ?? '')
+        ],
+        'income' => [
+            'gross' => clean($_POST['gross'] ?? ''),
+            'expenses' => clean($_POST['expenses'] ?? ''),
+            'net' => clean($_POST['net'] ?? '')
+        ],
+        'dependents' => [],
+        'signature' => clean($_POST['signature'] ?? '')
+    ];
+
+    // Process Dependents Table
+    if (!empty($_POST['dep_name'])) {
+        foreach ($_POST['dep_name'] as $i => $dn) {
+            if (empty($dn)) continue;
+            $extraDetails['dependents'][] = [
+                'name' => clean($dn),
+                'dob'  => clean($_POST['dep_dob'][$i] ?? ''),
+                'age'  => clean($_POST['dep_age'][$i] ?? ''),
+                'rel'  => clean($_POST['dep_rel'][$i] ?? '')
+            ];
+        }
+    }
+    $detailsJson = json_encode($extraDetails);
 
     // Required ID upload
     $idDoc = $_FILES['id_document'] ?? null;
@@ -96,8 +194,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $msg = 'Please upload a valid ID document.';
     } else {
         $db = getDB();
-        $stmt = $db->prepare("INSERT INTO pre_applications (first_name, middle_name, last_name, email, phone, street, barangay, city, province, initial_capital) VALUES (?,?,?,?,?,?,?,?,?,?)");
-        $stmt->bind_param('sssssssssd', $fname, $mname, $lname, $email, $phone, $street, $brgy, $city, $prov, $initialCapital);
+        $stmt = $db->prepare("INSERT INTO pre_applications (first_name, middle_name, last_name, email, phone, street, barangay, city, province, initial_capital, details_json) VALUES (?,?,?,?,?,?,?,?,?,?,?)");
+        $stmt->bind_param('sssssssssds', $fname, $mname, $lname, $email, $phone, $street, $brgy, $city, $prov, $initialCapital, $detailsJson);
         $stmt->execute();
         $appId = $db->insert_id;
 
@@ -166,9 +264,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $mail->addAddress($email, $fname);
                 $mail->isHTML(true);
-                $mail->Subject = 'Membership Application Received - CoopIMS';
+                $mail->Subject = 'Application Received - CoopIMS';
 
-                $mail->Body = "Hello " . htmlspecialchars($fname) . ",<br><br>Thank you for submitting your membership application at CoopIMS.<br><br>Your application has been received and is currently under review. We will contact you within 3-5 business days regarding the status of your application.<br><br><b>Application Details:</b><br>Name: " . htmlspecialchars($fname . ' ' . $mname . ' ' . $lname) . "<br>Email: " . htmlspecialchars($email) . "<br>Phone: " . htmlspecialchars($phone) . "<br><br>If you have any questions, please contact us.<br><br>Best regards,<br>CoopIMS Team";
+                $mail->Body = "Hello " . htmlspecialchars($name) . ",<br><br>Thank you for submitting your application at CoopIMS.<br><br>Your application has been received and is currently under review. We will contact you within 3-5 business days regarding the status of your application.<br><br>Best regards,<br>CoopIMS Team";
 
                 $mail->send();
             } catch (Exception $e) {
@@ -219,28 +317,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php endif; ?>
 
         <form method="POST" enctype="multipart/form-data">
+          <!-- APPLICANT -->
+          <div class="section-title">Applicant Information</div>
+          <div class="form-group"><label class="form-label">Full Name <span style="color:var(--danger);">*</span></label><input type="text" name="name" class="form-control" required></div>
           <div class="form-row">
-            <div class="form-group"><label class="form-label">First Name <span style="color:var(--danger);">*</span></label><input type="text" name="first_name" class="form-control" required></div>
-            <div class="form-group"><label class="form-label">Middle Name</label><input type="text" name="middle_name" class="form-control"></div>
-            <div class="form-group"><label class="form-label">Last Name <span style="color:var(--danger);">*</span></label><input type="text" name="last_name" class="form-control" required></div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">Email Address <span style="color:var(--danger);">*</span></label>
-              <input type="email" name="email" class="form-control" required placeholder="juan@email.com">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Phone Number <span style="color:var(--danger);">*</span></label>
-              <input type="tel" name="phone" class="form-control" required placeholder="09XX-XXX-XXXX">
+            <div class="form-group"><label class="form-label">Date of Birth</label><input type="date" name="dob" class="form-control"></div>
+            <div class="form-group"><label class="form-label">Age</label><input type="number" name="age" class="form-control"></div>
+            <div class="form-group"><label class="form-label">Sex</label>
+              <select name="sex" class="form-control">
+                <option>Male</option><option>Female</option>
+              </select>
             </div>
           </div>
           <div class="form-row">
-            <div class="form-group"><label class="form-label">Street</label><input type="text" name="street" class="form-control"></div>
-            <div class="form-group"><label class="form-label">Barangay</label><input type="text" name="barangay" class="form-control"></div>
+            <div class="form-group"><label class="form-label">Civil Status</label>
+              <select name="civil_status" class="form-control">
+                <option>Single</option><option>Married</option><option>Widow</option>
+              </select>
+            </div>
+            <div class="form-group"><label class="form-label">Residence Cert No</label><input type="text" name="res_cert" class="form-control"></div>
           </div>
           <div class="form-row">
-            <div class="form-group"><label class="form-label">City/Municipality</label><input type="text" name="city" class="form-control"></div>
-            <div class="form-group"><label class="form-label">Province</label><input type="text" name="province" class="form-control"></div>
+            <div class="form-group"><label class="form-label">Phone <span style="color:var(--danger);">*</span></label><input type="text" name="phone" class="form-control" required></div>
+            <div class="form-group"><label class="form-label">Email <span style="color:var(--danger);">*</span></label><input type="email" name="email" class="form-control" required></div>
+          </div>
+          <div class="form-group"><label class="form-label">Occupation</label><input type="text" name="occupation" class="form-control"></div>
+          <div class="form-group"><label class="form-label">Address</label><input type="text" name="address" class="form-control"></div>
+          
+          <div class="form-group">
+            <label class="form-label">Residence Type</label>
+            <div class="checkbox-group">
+              <label class="checkbox-item"><input type="checkbox" name="residence[]" value="owned"> Owned</label>
+              <label class="checkbox-item"><input type="checkbox" name="residence[]" value="mortgage"> Mortgage</label>
+              <label class="checkbox-item"><input type="checkbox" name="residence[]" value="rented"> Rented</label>
+              <label class="checkbox-item"><input type="checkbox" name="residence[]" value="free"> Free</label>
+              <label class="checkbox-item"><input type="checkbox" name="residence[]" value="parents"> With Parents</label>
+            </div>
           </div>
 
           <div class="form-group">
@@ -249,6 +361,104 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <small class="text-muted">Minimum contribution: ₱5,000</small>
           </div>
 
+          <!-- SPOUSE -->
+          <div class="section-title">Spouse Information</div>
+          <div class="form-group"><label class="form-label">Name</label><input type="text" name="spouse" class="form-control"></div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">DOB</label><input type="date" name="spouse_dob" class="form-control"></div>
+            <div class="form-group"><label class="form-label">Occupation</label><input type="text" name="spouse_job" class="form-control"></div>
+          </div>
+
+          <!-- BUSINESS -->
+          <div class="section-title">Business</div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Business Name</label><input type="text" name="business" class="form-control"></div>
+            <div class="form-group"><label class="form-label">Facebook</label><input type="text" name="facebook" class="form-control"></div>
+          </div>
+
+          <!-- BENEFICIARY -->
+          <div class="section-title">Beneficiary</div>
+          <div class="form-group"><label class="form-label">Name</label><input type="text" name="beneficiary" class="form-control"></div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">DOB</label><input type="date" name="ben_dob" class="form-control"></div>
+            <div class="form-group"><label class="form-label">Sex</label><input type="text" name="ben_sex" class="form-control"></div>
+            <div class="form-group"><label class="form-label">Relationship</label><input type="text" name="relationship" class="form-control"></div>
+          </div>
+
+          <!-- DEPENDENTS -->
+          <div class="section-title">Dependents</div>
+          <div class="table-wrap">
+            <table class="loan-table">
+              <thead><tr><th>Name</th><th>DOB</th><th>Age</th><th>Relationship</th></tr></thead>
+              <tbody>
+                <tr>
+                  <td><input type="text" name="dep_name[]" class="form-control"></td>
+                  <td><input type="date" name="dep_dob[]" class="form-control"></td>
+                  <td><input type="number" name="dep_age[]" class="form-control"></td>
+                  <td><input type="text" name="dep_rel[]" class="form-control"></td>
+                </tr>
+                <tr>
+                  <td><input type="text" name="dep_name[]" class="form-control"></td>
+                  <td><input type="date" name="dep_dob[]" class="form-control"></td>
+                  <td><input type="number" name="dep_age[]" class="form-control"></td>
+                  <td><input type="text" name="dep_rel[]" class="form-control"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- LOAN -->
+          <div class="section-title">Loan Details</div>
+          <div class="checkbox-group mb-3">
+            <label class="checkbox-item"><input type="checkbox" name="loan_type[]" value="regular"> Regular</label>
+            <label class="checkbox-item"><input type="checkbox" name="loan_type[]" value="salary"> Salary</label>
+            <label class="checkbox-item"><input type="checkbox" name="loan_type[]" value="micro"> Micro</label>
+            <label class="checkbox-item"><input type="checkbox" name="loan_type[]" value="pensioner"> Pensioner</label>
+            <label class="checkbox-item"><input type="checkbox" name="loan_type[]" value="special"> Special</label>
+            <label class="checkbox-item"><input type="checkbox" name="loan_type[]" value="agri"> Agricultural</label>
+          </div>
+          <div class="form-group"><label class="form-label">Others</label><input type="text" name="others" class="form-control"></div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Amount</label><input type="number" name="loan_amount" class="form-control"></div>
+            <div class="form-group"><label class="form-label">Rate (%)</label><input type="number" name="rate" class="form-control"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Term</label><input type="text" name="term" class="form-control"></div>
+            <div class="form-group"><label class="form-label">Mode</label><input type="text" name="mode" class="form-control"></div>
+          </div>
+
+          <!-- INCOME -->
+          <div class="section-title">Income & Expenses</div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Gross Income</label><input type="number" name="gross" class="form-control"></div>
+            <div class="form-group"><label class="form-label">Expenses</label><input type="number" name="expenses" class="form-control"></div>
+            <div class="form-group"><label class="form-label">Net Income</label><input type="number" name="net" class="form-control"></div>
+          </div>
+
+          <!-- OBLIGATIONS -->
+          <div class="section-title">Outstanding Loans</div>
+          <div class="table-wrap">
+            <table class="loan-table">
+              <thead><tr><th>Creditor</th><th>Address</th><th>Amount</th><th>Due Date</th></tr></thead>
+              <tbody>
+                <tr>
+                  <td><input type="text" name="creditor[]" class="form-control"></td>
+                  <td><input type="text" name="cred_addr[]" class="form-control"></td>
+                  <td><input type="number" name="cred_amount[]" class="form-control"></td>
+                  <td><input type="date" name="cred_due[]" class="form-control"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- DECLARATION -->
+          <div class="section-title">Declaration</div>
+          <div class="form-group">
+            <textarea name="declaration" class="form-control" rows="2">I certify that all information is true.</textarea>
+          </div>
+          <div class="form-group"><label class="form-label">Signature</label><input type="text" name="signature" class="form-control"></div>
+
+          <div class="section-title">Upload Documents</div>
           <div class="form-group">
             <label class="form-label">Valid ID (PDF/JPG/PNG, max 5MB) <span style="color:var(--danger);">*</span></label>
             <input type="file" name="id_document" class="form-control" accept=".pdf,.jpg,.jpeg,.png" required>

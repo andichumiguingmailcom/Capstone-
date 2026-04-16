@@ -243,33 +243,44 @@ function reviewApp(row) {
   
   let html = `<div style="display:grid; grid-template-columns: 1fr 1fr; gap: 15px; font-size: 0.85rem;">`;
   html += `<div><strong>Birth Date:</strong> ${details.dob || '—'}</div>`;
-  html += `<div><strong>Civil Status:</strong> ${details.civil_status || '—'}</div>`;
+  html += `<div><strong>Age:</strong> ${details.age || '—'}</div>`;
   html += `<div><strong>Sex:</strong> ${details.sex || '—'}</div>`;
+  html += `<div><strong>Civil Status:</strong> ${details.civil_status || '—'}</div>`;
   html += `<div><strong>Occupation:</strong> ${details.occupation || '—'}</div>`;
-  html += `<div><strong>Residence:</strong> ${(details.residence_types || []).join(', ') || '—'}</div>`;
+  html += `<div><strong>Residence Certificate:</strong> ${details.res_cert || '—'}</div>`;
+  html += `<div><strong>Residence Types:</strong> ${(details.residence_types || []).join(', ') || '—'}</div>`;
+  html += `<div><strong>Business Name:</strong> ${details.business?.name || '—'}</div>`;
+  html += `<div><strong>Facebook:</strong> ${details.business?.facebook || '—'}</div>`;
+  html += `<div><strong>Signature:</strong> ${details.signature || '—'}</div>`;
   html += `</div>`;
 
   if (details.spouse && details.spouse.name) {
     html += `<div style="margin-top:15px; padding-top:10px; border-top:1px solid #eee;">`;
-    html += `<strong>Spouse:</strong> ${details.spouse.name} | ${details.spouse.job || 'No Job info'}`;
+    html += `<strong>Spouse:</strong> ${details.spouse.name} (DOB: ${details.spouse.dob || '—'}, Job: ${details.spouse.job || '—'})`;
+    html += `</div>`;
+  }
+
+  if (details.beneficiary && details.beneficiary.name) {
+    html += `<div style="margin-top:15px; padding-top:10px; border-top:1px solid #eee;">`;
+    html += `<strong>Beneficiary:</strong> ${details.beneficiary.name} (DOB: ${details.beneficiary.dob || '—'}, Sex: ${details.beneficiary.sex || '—'}, Relationship: ${details.beneficiary.relationship || '—'})`;
     html += `</div>`;
   }
 
   if (details.loan_details) {
     html += `<div style="margin-top:15px; background:#fff; padding:10px; border-radius:8px; border:1px solid #ddd;">`;
     html += `<strong>Requested Loan:</strong> ${(details.loan_details.types || []).join(', ') || '—'}<br>`;
-    html += `Term: ${details.loan_details.term} | Mode: ${details.loan_details.mode}`;
+    html += `Others: ${details.loan_details.others || '—'} | Rate: ${details.loan_details.rate || '—'} | Term: ${details.loan_details.term || '—'} | Mode: ${details.loan_details.mode || '—'}`;
     html += `</div>`;
   }
 
-  if (details.financials) {
-    html += `<div style="margin-top:10px; color:#1a6b3a;"><strong>Monthly Net Income:</strong> ₱${parseFloat(details.financials.net || 0).toLocaleString()}</div>`;
+  if (details.income) {
+    html += `<div style="margin-top:10px; color:#1a6b3a;"><strong>Income:</strong> Gross: ₱${parseFloat(details.income.gross || 0).toLocaleString()}, Expenses: ₱${parseFloat(details.income.expenses || 0).toLocaleString()}, Net: ₱${parseFloat(details.income.net || 0).toLocaleString()}</div>`;
   }
 
   if (details.dependents && details.dependents.length > 0) {
     html += `<div style="margin-top:15px;"><strong>Dependents:</strong><ul style="margin:5px 0 0 20px; padding:0;">`;
     details.dependents.forEach(d => {
-      html += `<li>${d.name} (${d.rel}, Age: ${d.age})</li>`;
+      html += `<li>${d.name} (DOB: ${d.dob || '—'}, Age: ${d.age || '—'}, Relationship: ${d.rel || '—'})</li>`;
     });
     html += `</ul></div>`;
   }

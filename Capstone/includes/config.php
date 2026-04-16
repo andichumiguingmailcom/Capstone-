@@ -1,9 +1,9 @@
 <?php
 // ── DATABASE CONFIGURATION ──
 define('DB_HOST', 'localhost');
-define('DB_USER', 'u372976967_bichamco');
-define('DB_PASS', 'Bichamco25');
-define('DB_NAME', 'u372976967_bichamco_ims');
+define('DB_USER', 'root');
+define('DB_PASS', '');
+define('DB_NAME', 'coop_ims');
 
 // ── ESTABLISH CONNECTION ──
 function getDB() {

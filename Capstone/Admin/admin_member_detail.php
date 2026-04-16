@@ -15,6 +15,9 @@ if (!$id) {
     exit; // Stop execution to prevent rendering full page HTML
 }
 
+$user = getCurrentUser();
+$isGeneralManager = $user['role'] === 'general_manager';
+
 $member = $db->query("SELECT *, CONCAT_WS(' ', first_name, middle_name, last_name) as full_name,
     CONCAT_WS(', ', street, barangay, city, province) as address
     FROM members WHERE id=$id")->fetch_assoc();
@@ -23,6 +26,13 @@ if (!$member) {
     http_response_code(404); // Not Found
     echo '<div class="text-center text-muted" style="padding:40px;">Member not found.</div>';
     exit; // Stop execution
+}
+
+// Fetch pre-application details
+$preAppDetails = null;
+$preApp = $db->query("SELECT details_json FROM pre_applications WHERE first_name='" . $db->real_escape_string($member['first_name']) . "' AND last_name='" . $db->real_escape_string($member['last_name']) . "' AND email='" . $db->real_escape_string($member['email']) . "' LIMIT 1")->fetch_assoc();
+if ($preApp && $preApp['details_json']) {
+    $preAppDetails = json_decode($preApp['details_json'], true);
 }
 
 // If viewing documents section, display documents only
@@ -121,6 +131,9 @@ $payments = $db->query("SELECT lp.*, l.principal FROM loan_payments lp
         <div>
           <?php $sb=['active'=>'badge-green','inactive'=>'badge-gray','suspended'=>'badge-red']; ?>
           <span class="badge <?= $sb[$member['status']] ?>"><?= ucfirst($member['status']) ?></span>
+          <?php if ($isGeneralManager): ?>
+            <button class="btn btn-sm btn-outline" onclick="window.print()" style="margin-left:10px;">🖨️ Print</button>
+          <?php endif; ?>
         </div>
       </div>
       <div class="card-body">
@@ -154,8 +167,93 @@ $payments = $db->query("SELECT lp.*, l.principal FROM loan_payments lp
             </div>
           </div>
         </div>
+        <?php if ($preAppDetails): ?>
+        <div style="margin-top:20px; padding-top:20px; border-top:1px solid var(--border);">
+          <h4 style="margin-bottom:15px; color:var(--primary);">Pre-Application Information</h4>
+         v class="card-body">
+        <div class="grid-2">
+          <div>
+            <div class="form-group">
+              <label class="form-label">Date of Birth</label>
+              <div><?= htmlspecialchars($preAppDetails['dob'] ?? '—') ?></div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Age</label>
+              <div><?= htmlspecialchars($preAppDetails['age'] ?? '—') ?></div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Sex</label>
+              <div><?= htmlspecialchars($preAppDetails['sex'] ?? '—') ?></div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Civil Status</label>
+              <div><?= htmlspecialchars($preAppDetails['civil_status'] ?? '—') ?></div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Occupation</label>
+              <div><?= htmlspecialchars($preAppDetails['occupation'] ?? '—') ?></div>
+            </div>
+          </div>
+          <div>
+            <div class="form-group">
+              <label class="form-label">Residence Certificate</label>
+              <div><?= htmlspecialchars($preAppDetails['res_cert'] ?? '—') ?></div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Residence Types</label>
+              <div><?= is_array($preAppDetails['residence_types']) ? implode(', ', array_map('htmlspecialchars', $preAppDetails['residence_types'])) : '—' ?></div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Business Name</label>
+              <div><?= htmlspecialchars($preAppDetails['business']['name'] ?? '—') ?></div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Facebook</label>
+              <div><?= htmlspecialchars($preAppDetails['business']['facebook'] ?? '—') ?></div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Signature</label>
+              <div><?= htmlspecialchars($preAppDetails['signature'] ?? '—') ?></div>
+            </div>
+          </div>
+        </div>
+        <?php if (!empty($preAppDetails['spouse'])): ?>
+        <div class="form-group" style="margin-top:20px;">
+          <label class="form-label">Spouse Information</label>
+          <div>Name: <?= htmlspecialchars($preAppDetails['spouse']['name'] ?? '—') ?>, DOB: <?= htmlspecialchars($preAppDetails['spouse']['dob'] ?? '—') ?>, Job: <?= htmlspecialchars($preAppDetails['spouse']['job'] ?? '—') ?></div>
+        </div>
+        <?php endif; ?>
+        <?php if (!empty($preAppDetails['beneficiary'])): ?>
+        <div class="form-group">
+          <label class="form-label">Beneficiary</label>
+          <div>Name: <?= htmlspecialchars($preAppDetails['beneficiary']['name'] ?? '—') ?>, DOB: <?= htmlspecialchars($preAppDetails['beneficiary']['dob'] ?? '—') ?>, Sex: <?= htmlspecialchars($preAppDetails['beneficiary']['sex'] ?? '—') ?>, Relationship: <?= htmlspecialchars($preAppDetails['beneficiary']['relationship'] ?? '—') ?></div>
+        </div>
+        <?php endif; ?>
+        <?php if (!empty($preAppDetails['loan_details'])): ?>
+        <div class="form-group">
+          <label class="form-label">Loan Details</label>
+          <div>Types: <?= is_array($preAppDetails['loan_details']['types']) ? implode(', ', array_map('htmlspecialchars', $preAppDetails['loan_details']['types'])) : '—' ?>, Others: <?= htmlspecialchars($preAppDetails['loan_details']['others'] ?? '—') ?>, Rate: <?= htmlspecialchars($preAppDetails['loan_details']['rate'] ?? '—') ?>, Term: <?= htmlspecialchars($preAppDetails['loan_details']['term'] ?? '—') ?>, Mode: <?= htmlspecialchars($preAppDetails['loan_details']['mode'] ?? '—') ?></div>
+        </div>
+        <?php endif; ?>
+        <?php if (!empty($preAppDetails['income'])): ?>
+        <div class="form-group">
+          <label class="form-label">Income Details</label>
+          <div>Gross: <?= htmlspecialchars($preAppDetails['income']['gross'] ?? '—') ?>, Expenses: <?= htmlspecialchars($preAppDetails['income']['expenses'] ?? '—') ?>, Net: <?= htmlspecialchars($preAppDetails['income']['net'] ?? '—') ?></div>
+        </div>
+        <?php endif; ?>
+        <?php if (!empty($preAppDetails['dependents'])): ?>
+        <div class="form-group">
+          <label class="form-label">Dependents</label>
+          <ul>
+            <?php foreach ($preAppDetails['dependents'] as $dep): ?>
+            <li>Name: <?= htmlspecialchars($dep['name'] ?? '—') ?>, DOB: <?= htmlspecialchars($dep['dob'] ?? '—') ?>, Age: <?= htmlspecialchars($dep['age'] ?? '—') ?>, Relationship: <?= htmlspecialchars($dep['rel'] ?? '—') ?></li>
+            <?php endforeach; ?>
+          </ul>
+        </div>
+        <?php endif; ?>
       </div>
     </div>
+    <?php endif; ?>
 
     <!-- STATS -->
     <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:24px;">

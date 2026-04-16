@@ -169,8 +169,8 @@ $payments = $db->query("SELECT lp.*, l.principal FROM loan_payments lp
         </div>
         <?php if ($preAppDetails): ?>
         <div style="margin-top:20px; padding-top:20px; border-top:1px solid var(--border);">
-          <h4 style="margin-bottom:15px; color:var(--primary);">Pre-Application Information</h4>
-         v class="card-body">
+          <h4 style="margin-bottom:15px; color:var(--primary);"></h4>
+          <div class="card-body">
         <div class="grid-2">
           <div>
             <div class="form-group">

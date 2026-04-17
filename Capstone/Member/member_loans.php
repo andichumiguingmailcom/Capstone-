@@ -129,13 +129,22 @@ $applications = $db->query("SELECT la.*, lt.type_name FROM loan_applications la
                 <thead><tr><th>Type</th><th>Amount</th><th>Term</th><th>Status</th><th>Remarks</th><th>Date</th></tr></thead>
                 <tbody>
                   <?php while ($a = $applications->fetch_assoc()):
-                    $b = ['pending'=>'badge-gold','approved'=>'badge-green','rejected'=>'badge-red','disbursed'=>'badge-blue'][$a['status']] ?? 'badge-gray';
+                    $statusLabels = [
+                        'pending' => 'For Evaluation of Loan Officer',
+                        'for_gm_evaluation' => 'For Evaluation of General Manager',
+                        'approved' => 'Approved',
+                        'rejected' => 'Rejected',
+                        'disbursed' => 'Disbursed'
+                    ];
+                    $badge = ['pending'=>'badge-gold','for_gm_evaluation'=>'badge-orange','approved'=>'badge-green','rejected'=>'badge-red','disbursed'=>'badge-blue'];
+                    $b = $badge[$a['status']] ?? 'badge-gray';
+                    $label = $statusLabels[$a['status']] ?? ucfirst($a['status']);
                   ?>
                   <tr>
                     <td class="fw-600"><?= htmlspecialchars($a['type_name']) ?></td>
                     <td>₱<?= number_format($a['amount'], 2) ?></td>
                     <td><?= $a['term_months'] ?> mos</td>
-                    <td><span class="badge <?= $b ?>"><?= ucfirst($a['status']) ?></span></td>
+                    <td><span class="badge <?= $b ?>"><?= $label ?></span></td>
                     <td class="text-muted text-sm"><?= htmlspecialchars($a['remarks'] ?? '—') ?></td>
                     <td><?= date('M j, Y', strtotime($a['applied_at'])) ?></td>
                   </tr>

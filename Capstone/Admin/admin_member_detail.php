@@ -220,13 +220,13 @@ $payments = $db->query("SELECT lp.*, l.principal FROM loan_payments lp
         <?php if (!empty($preAppDetails['spouse'])): ?>
         <div class="form-group" style="margin-top:20px;">
           <label class="form-label">Spouse Information</label>
-          <div>Name: <?= htmlspecialchars($preAppDetails['spouse']['name'] ?? '—') ?>, DOB: <?= htmlspecialchars($preAppDetails['spouse']['dob'] ?? '—') ?>, Job: <?= htmlspecialchars($preAppDetails['spouse']['job'] ?? '—') ?></div>
+          <div>Name: <?= htmlspecialchars($preAppDetails['spouse']['name'] ?? '—') ?>, Date of Birth: <?= htmlspecialchars($preAppDetails['spouse']['dob'] ?? '—') ?>, Job: <?= htmlspecialchars($preAppDetails['spouse']['job'] ?? '—') ?></div>
         </div>
         <?php endif; ?>
         <?php if (!empty($preAppDetails['beneficiary'])): ?>
         <div class="form-group">
           <label class="form-label">Beneficiary</label>
-          <div>Name: <?= htmlspecialchars($preAppDetails['beneficiary']['name'] ?? '—') ?>, DOB: <?= htmlspecialchars($preAppDetails['beneficiary']['dob'] ?? '—') ?>, Sex: <?= htmlspecialchars($preAppDetails['beneficiary']['sex'] ?? '—') ?>, Relationship: <?= htmlspecialchars($preAppDetails['beneficiary']['relationship'] ?? '—') ?></div>
+          <div>Name: <?= htmlspecialchars($preAppDetails['beneficiary']['name'] ?? '—') ?>, Date of Birth: <?= htmlspecialchars($preAppDetails['beneficiary']['dob'] ?? '—') ?>, Sex: <?= htmlspecialchars($preAppDetails['beneficiary']['sex'] ?? '—') ?>, Relationship: <?= htmlspecialchars($preAppDetails['beneficiary']['relationship'] ?? '—') ?></div>
         </div>
         <?php endif; ?>
         <?php if (!empty($preAppDetails['loan_details'])): ?>
@@ -246,7 +246,7 @@ $payments = $db->query("SELECT lp.*, l.principal FROM loan_payments lp
           <label class="form-label">Dependents</label>
           <ul>
             <?php foreach ($preAppDetails['dependents'] as $dep): ?>
-            <li>Name: <?= htmlspecialchars($dep['name'] ?? '—') ?>, DOB: <?= htmlspecialchars($dep['dob'] ?? '—') ?>, Age: <?= htmlspecialchars($dep['age'] ?? '—') ?>, Relationship: <?= htmlspecialchars($dep['rel'] ?? '—') ?></li>
+            <li>Name: <?= htmlspecialchars($dep['name'] ?? '—') ?>, Date of Birth: <?= htmlspecialchars($dep['dob'] ?? '—') ?>, Age: <?= htmlspecialchars($dep['age'] ?? '—') ?>, Relationship: <?= htmlspecialchars($dep['rel'] ?? '—') ?></li>
             <?php endforeach; ?>
           </ul>
         </div>

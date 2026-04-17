@@ -34,12 +34,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
-        $status = $action === 'approve_officer' ? 'approved' : 'rejected';
+        $status = $action === 'approve_officer' ? 'for_gm_evaluation' : 'rejected';
         $stmt = $db->prepare("UPDATE loan_applications SET status=?, approved_by=?, approved_at=NOW(), remarks=? WHERE id=? AND status='pending'");
         $stmt->bind_param('sisi', $status, $_SESSION['user_id'], $remarks, $id);
         $stmt->execute();
 
-        header('Location: admin_loan_applications.php?msg=' . urlencode('Application ' . ($status === 'approved' ? 'approved' : 'rejected') . ' successfully.'));
+        header('Location: admin_loan_applications.php?msg=' . urlencode('Application ' . ($status === 'for_gm_evaluation' ? 'approved' : 'rejected') . ' successfully.'));
         exit;
     }
 
@@ -50,7 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $current = $db->query("SELECT la.status, u.role AS approved_by_role FROM loan_applications la LEFT JOIN users u ON la.approved_by=u.id WHERE la.id=$id")->fetch_assoc();
-        if (!$current || $current['status'] !== 'approved' || $current['approved_by_role'] !== 'loan_officer') {
+        if (!$current || $current['status'] !== 'for_gm_evaluation' || $current['approved_by_role'] !== 'loan_officer') {
             header('Location: admin_loan_applications.php?msg=' . urlencode('Application must be approved by loan officer first.'));
             exit;
         }
@@ -182,15 +182,25 @@ $members   = $db->query("SELECT id, member_id, CONCAT_WS(' ', first_name, last_n
                 <td><?= $row['term_months'] ?> mos.</td>
                 <td><?= date('M j, Y', strtotime($row['applied_at'])) ?></td>
                 <td>
-                  <?php $badge = ['pending'=>'badge-gold','approved'=>'badge-green','rejected'=>'badge-red','disbursed'=>'badge-blue'];
-                  $b = $badge[$row['status']] ?? 'badge-gray'; ?>
-                  <span class="badge <?= $b ?>"><?= ucfirst($row['status']) ?></span>
+                  <?php 
+                  $statusLabels = [
+                      'pending' => 'For Evaluation of Loan Officer',
+                      'for_gm_evaluation' => 'For Evaluation of General Manager',
+                      'approved' => 'Approved',
+                      'rejected' => 'Rejected',
+                      'disbursed' => 'Disbursed'
+                  ];
+                  $badge = ['pending'=>'badge-gold','for_gm_evaluation'=>'badge-orange','approved'=>'badge-green','rejected'=>'badge-red','disbursed'=>'badge-blue'];
+                  $b = $badge[$row['status']] ?? 'badge-gray';
+                  $label = $statusLabels[$row['status']] ?? ucfirst($row['status']);
+                  ?>
+                  <span class="badge <?= $b ?>"><?= $label ?></span>
                 </td>
                 <td>
                   <?php if ($row['status'] === 'pending' && $isLoanOfficer): ?>
                     <button class="btn btn-sm btn-primary" onclick="showActionModal(<?= $row['id'] ?>, 'approve_officer')">✅ Approve</button>
                     <button class="btn btn-sm btn-danger" onclick="showActionModal(<?= $row['id'] ?>, 'reject_officer')">❌ Reject</button>
-                  <?php elseif ($row['status'] === 'approved' && $isGeneralManager && $row['approved_by_role'] === 'loan_officer'): ?>
+                  <?php elseif ($row['status'] === 'for_gm_evaluation' && $isGeneralManager && $row['approved_by_role'] === 'loan_officer'): ?>
                     <button class="btn btn-sm btn-primary" onclick="showActionModal(<?= $row['id'] ?>, 'approve_gm')">✅ Approve</button>
                     <button class="btn btn-sm btn-danger" onclick="showActionModal(<?= $row['id'] ?>, 'reject_gm')">❌ Reject</button>
                   <?php elseif ($row['status'] === 'approved' && $isCashier && $row['approved_by_role'] === 'general_manager'): ?>

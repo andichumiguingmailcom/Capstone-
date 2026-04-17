@@ -242,7 +242,7 @@ function reviewApp(row) {
   const detailsDiv = document.getElementById('applicationFullDetails');
   
   let html = `<div style="display:grid; grid-template-columns: 1fr 1fr; gap: 15px; font-size: 0.85rem;">`;
-  html += `<div><strong>Birth Date:</strong> ${details.dob || '—'}</div>`;
+  html += `<div><strong>Date of Birth:</strong> ${details.dob || '—'}</div>`;
   html += `<div><strong>Age:</strong> ${details.age || '—'}</div>`;
   html += `<div><strong>Sex:</strong> ${details.sex || '—'}</div>`;
   html += `<div><strong>Civil Status:</strong> ${details.civil_status || '—'}</div>`;
@@ -256,13 +256,13 @@ function reviewApp(row) {
 
   if (details.spouse && details.spouse.name) {
     html += `<div style="margin-top:15px; padding-top:10px; border-top:1px solid #eee;">`;
-    html += `<strong>Spouse:</strong> ${details.spouse.name} (DOB: ${details.spouse.dob || '—'}, Job: ${details.spouse.job || '—'})`;
+    html += `<strong>Spouse:</strong> ${details.spouse.name} (Date of Birth: ${details.spouse.dob || '—'}, Job: ${details.spouse.job || '—'})`;
     html += `</div>`;
   }
 
   if (details.beneficiary && details.beneficiary.name) {
     html += `<div style="margin-top:15px; padding-top:10px; border-top:1px solid #eee;">`;
-    html += `<strong>Beneficiary:</strong> ${details.beneficiary.name} (DOB: ${details.beneficiary.dob || '—'}, Sex: ${details.beneficiary.sex || '—'}, Relationship: ${details.beneficiary.relationship || '—'})`;
+    html += `<strong>Beneficiary:</strong> ${details.beneficiary.name} (Date of Birth: ${details.beneficiary.dob || '—'}, Sex: ${details.beneficiary.sex || '—'}, Relationship: ${details.beneficiary.relationship || '—'})`;
     html += `</div>`;
   }
 
@@ -280,7 +280,7 @@ function reviewApp(row) {
   if (details.dependents && details.dependents.length > 0) {
     html += `<div style="margin-top:15px;"><strong>Dependents:</strong><ul style="margin:5px 0 0 20px; padding:0;">`;
     details.dependents.forEach(d => {
-      html += `<li>${d.name} (DOB: ${d.dob || '—'}, Age: ${d.age || '—'}, Relationship: ${d.rel || '—'})</li>`;
+      html += `<li>${d.name} (Date of Birth: ${d.dob || '—'}, Age: ${d.age || '—'}, Relationship: ${d.rel || '—'})</li>`;
     });
     html += `</ul></div>`;
   }

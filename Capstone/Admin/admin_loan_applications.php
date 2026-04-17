@@ -217,6 +217,7 @@ $members   = $db->query("SELECT id, member_id, CONCAT_WS(' ', first_name, last_n
                     data-date-decision="<?= $row['approved_at'] ? htmlspecialchars(date('Y-m-d', strtotime($row['approved_at'])), ENT_QUOTES) : 'Pending' ?>"
                     data-status="<?= htmlspecialchars($row['status'], ENT_QUOTES) ?>"
                     data-remarks="<?= htmlspecialchars($row['remarks'] ?? 'No remarks', ENT_QUOTES) ?>"
+                    data-details='<?= htmlspecialchars($row['details_json'] ?? '{}', ENT_QUOTES) ?>'
                   >
                     📄 View
                   </button>
@@ -314,6 +315,8 @@ $members   = $db->query("SELECT id, member_id, CONCAT_WS(' ', first_name, last_n
       <div><strong>Date Decision:</strong> <span id="detailDateDecision"></span></div>
       <div><strong>Status:</strong> <span id="detailStatus"></span></div>
       <div style="grid-column:1/-1;"><strong>Remarks:</strong> <span id="detailRemarks"></span></div>
+      <div style="grid-column:1/-1; margin-top:15px;"><strong>Personal Details:</strong></div>
+      <div style="grid-column:1/-1;" id="applicationPersonalDetails"></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-primary" onclick="closeModal('modal-view-application')">Close</button>
@@ -345,6 +348,7 @@ function viewApplication(button) {
   const dateDecision = button.dataset.dateDecision || 'Pending';
   const status = button.dataset.status || 'N/A';
   const remarks = button.dataset.remarks || 'N/A';
+  const detailsJson = button.dataset.details || '{}';
 
   document.getElementById('detailAppId').textContent = appId;
   document.getElementById('detailLoanId').textContent = loanId === '' ? 'N/A' : loanId;
@@ -355,6 +359,30 @@ function viewApplication(button) {
   document.getElementById('detailDateDecision').textContent = dateDecision === '' ? 'Pending' : dateDecision;
   document.getElementById('detailStatus').textContent = status;
   document.getElementById('detailRemarks').textContent = remarks;
+
+  // Display personal details
+  let details = {};
+  try {
+    details = JSON.parse(detailsJson);
+  } catch (e) {
+    console.error("Error parsing application details:", e);
+  }
+  const detailsDiv = document.getElementById('applicationPersonalDetails');
+  let html = '';
+  if (Object.keys(details).length > 0) {
+    html += `<div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.85rem; margin-top:15px;">`;
+    html += `<div><strong>First Name:</strong> ${details.first_name || '—'}</div>`;
+    html += `<div><strong>Middle Name:</strong> ${details.middle_name || '—'}</div>`;
+    html += `<div><strong>Last Name:</strong> ${details.last_name || '—'}</div>`;
+    html += `<div><strong>Email:</strong> ${details.email || '—'}</div>`;
+    html += `<div><strong>Phone:</strong> ${details.phone || '—'}</div>`;
+    html += `<div><strong>Date of Birth:</strong> ${details.dob || '—'}</div>`;
+    html += `<div><strong>Address:</strong> ${[details.street, details.barangay, details.city, details.province].filter(Boolean).join(', ') || '—'}</div>`;
+    html += `</div>`;
+  } else {
+    html = '<div class="text-muted" style="margin-top:15px;">No personal details provided.</div>';
+  }
+  detailsDiv.innerHTML = html;
 
   openModal('modal-view-application');
 }

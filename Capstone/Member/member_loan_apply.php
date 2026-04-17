@@ -17,6 +17,17 @@ $db = getDB();
 $memberId = $_SESSION['member_id'] ?? 0;
 $msg = ''; $msgType = 'green';
 
+// Fetch pre-application data for pre-filling
+$preAppData = null;
+$preApp = $db->query("SELECT * FROM pre_applications WHERE first_name='" . $db->real_escape_string($_SESSION['user_name']) . "' OR email='" . $db->real_escape_string($_SESSION['user_name']) . "' LIMIT 1")->fetch_assoc();
+if ($preApp) {
+    $preAppData = $preApp;
+    if ($preApp['details_json']) {
+        $details = json_decode($preApp['details_json'], true);
+        $preAppData = array_merge($preAppData, $details);
+    }
+}
+
 // Get member's capital share
 $memberCapitalShare = $db->query("SELECT COALESCE(amount, 0) as amount FROM capital_shares WHERE member_id=$memberId")->fetch_assoc()['amount'] ?? 0;
 
@@ -38,13 +49,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $termMonths  = (int)$_POST['term_months'];
     $purpose     = clean($_POST['purpose'] ?? '');
 
+    // Collect personal details
+    $personalDetails = [
+        'first_name' => clean($_POST['first_name'] ?? ''),
+        'middle_name' => clean($_POST['middle_name'] ?? ''),
+        'last_name' => clean($_POST['last_name'] ?? ''),
+        'email' => clean($_POST['email'] ?? ''),
+        'phone' => clean($_POST['phone'] ?? ''),
+        'dob' => clean($_POST['dob'] ?? ''),
+        'street' => clean($_POST['street'] ?? ''),
+        'barangay' => clean($_POST['barangay'] ?? ''),
+        'city' => clean($_POST['city'] ?? ''),
+        'province' => clean($_POST['province'] ?? '')
+    ];
+    $detailsJson = json_encode($personalDetails);
+
     // Check for existing pending app
     $existing = $db->query("SELECT id FROM loan_applications WHERE member_id=$memberId AND status='pending'")->num_rows;
     if ($existing) {
         $msg = 'You already have a pending loan application.'; $msgType = 'red';
     } else {
-        $stmt = $db->prepare("INSERT INTO loan_applications (member_id,loan_type_id,amount,term_months,purpose) VALUES (?,?,?,?,?)");
-        $stmt->bind_param('iidis', $memberId,$loanTypeId,$amount,$termMonths,$purpose);
+        $stmt = $db->prepare("INSERT INTO loan_applications (member_id,loan_type_id,amount,term_months,purpose,details_json) VALUES (?,?,?,?,?,?)");
+        $stmt->bind_param('iidisss', $memberId,$loanTypeId,$amount,$termMonths,$purpose,$detailsJson);
         $stmt->execute();
         $msg = 'Your loan application has been submitted! We will notify you once reviewed.';
     }
@@ -107,8 +133,183 @@ $myApps = $db->query("SELECT la.*, lt.type_name FROM loan_applications la
           <div class="card-header"><span class="card-title">📝 Loan Application Form</span></div>
           <div class="card-body">
             <form method="POST" id="loanForm">
+              <!-- PERSONAL INFORMATION -->
+              <h4 style="margin-bottom:16px; color:var(--primary);">Personal Information</h4>
+              <div class="grid-2">
+                <div class="form-group">
+                  <label class="form-label">First Name</label>
+                  <input type="text" name="first_name" class="form-control" value="<?= htmlspecialchars($preAppData['first_name'] ?? '') ?>" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Middle Name</label>
+                  <input type="text" name="middle_name" class="form-control" value="<?= htmlspecialchars($preAppData['middle_name'] ?? '') ?>">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Last Name</label>
+                  <input type="text" name="last_name" class="form-control" value="<?= htmlspecialchars($preAppData['last_name'] ?? '') ?>" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Email</label>
+                  <input type="email" name="email" class="form-control" value="<?= htmlspecialchars($preAppData['email'] ?? '') ?>" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Phone</label>
+                  <input type="text" name="phone" class="form-control" value="<?= htmlspecialchars($preAppData['phone'] ?? '') ?>" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Date of Birth</label>
+                  <input type="date" name="dob" class="form-control" value="<?= htmlspecialchars($preAppData['dob'] ?? '') ?>" required>
+                </div>
+              </div>
               <div class="form-group">
-                <label class="form-label">Loan Type</label>
+                <label class="form-label">Address</label>
+                <div class="grid-3">
+                  <input type="text" name="street" class="form-control" placeholder="Street" value="<?= htmlspecialchars($preAppData['street'] ?? '') ?>" required>
+                  <input type="text" name="barangay" class="form-control" placeholder="Barangay" value="<?= htmlspecialchars($preAppData['barangay'] ?? '') ?>" required>
+                  <input type="text" name="city" class="form-control" placeholder="City" value="<?= htmlspecialchars($preAppData['city'] ?? '') ?>" required>
+                </div>
+                <input type="text" name="province" class="form-control" placeholder="Province" value="<?= htmlspecialchars($preAppData['province'] ?? '') ?>" required style="margin-top:8px;">
+              </div>
+
+              <!-- SPOUSE INFORMATION -->
+              <h4 style="margin:24px 0 16px 0; color:var(--primary);">Spouse Information (Optional)</h4>
+              <div class="grid-2">
+                <div class="form-group">
+                  <label class="form-label">Spouse Name</label>
+                  <input type="text" name="spouse_name" class="form-control" value="<?= htmlspecialchars($preAppData['spouse']['name'] ?? '') ?>">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Spouse Date of Birth</label>
+                  <input type="date" name="spouse_dob" class="form-control" value="<?= htmlspecialchars($preAppData['spouse']['dob'] ?? '') ?>">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Spouse Job</label>
+                  <input type="text" name="spouse_job" class="form-control" value="<?= htmlspecialchars($preAppData['spouse']['job'] ?? '') ?>">
+                </div>
+              </div>
+
+              <!-- BENEFICIARY INFORMATION -->
+              <h4 style="margin:24px 0 16px 0; color:var(--primary);">Beneficiary Information (Optional)</h4>
+              <div class="grid-2">
+                <div class="form-group">
+                  <label class="form-label">Beneficiary Name</label>
+                  <input type="text" name="beneficiary_name" class="form-control" value="<?= htmlspecialchars($preAppData['beneficiary']['name'] ?? '') ?>">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Beneficiary Date of Birth</label>
+                  <input type="date" name="beneficiary_dob" class="form-control" value="<?= htmlspecialchars($preAppData['beneficiary']['dob'] ?? '') ?>">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Beneficiary Sex</label>
+                  <select name="beneficiary_sex" class="form-control">
+                    <option value="">— Select —</option>
+                    <option value="Male" <?= ($preAppData['beneficiary']['sex'] ?? '') === 'Male' ? 'selected' : '' ?>>Male</option>
+                    <option value="Female" <?= ($preAppData['beneficiary']['sex'] ?? '') === 'Female' ? 'selected' : '' ?>>Female</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Relationship</label>
+                  <input type="text" name="beneficiary_relationship" class="form-control" value="<?= htmlspecialchars($preAppData['beneficiary']['relationship'] ?? '') ?>">
+                </div>
+              </div>
+
+              <!-- BUSINESS INFORMATION -->
+              <h4 style="margin:24px 0 16px 0; color:var(--primary);">Business Information (Optional)</h4>
+              <div class="grid-2">
+                <div class="form-group">
+                  <label class="form-label">Business Name</label>
+                  <input type="text" name="business_name" class="form-control" value="<?= htmlspecialchars($preAppData['business']['name'] ?? '') ?>">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Facebook Page</label>
+                  <input type="text" name="business_facebook" class="form-control" value="<?= htmlspecialchars($preAppData['business']['facebook'] ?? '') ?>">
+                </div>
+              </div>
+
+              <!-- INCOME INFORMATION -->
+              <h4 style="margin:24px 0 16px 0; color:var(--primary);">Income Information</h4>
+              <div class="grid-2">
+                <div class="form-group">
+                  <label class="form-label">Gross Monthly Income</label>
+                  <input type="number" name="gross_income" class="form-control" step="0.01" value="<?= htmlspecialchars($preAppData['income']['gross'] ?? '') ?>">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Monthly Expenses</label>
+                  <input type="number" name="monthly_expenses" class="form-control" step="0.01" value="<?= htmlspecialchars($preAppData['income']['expenses'] ?? '') ?>">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Net Monthly Income</label>
+                  <input type="number" name="net_income" class="form-control" step="0.01" value="<?= htmlspecialchars($preAppData['income']['net'] ?? '') ?>">
+                </div>
+              </div>
+
+              <!-- DEPENDENTS -->
+              <h4 style="margin:24px 0 16px 0; color:var(--primary);">Dependents (Optional)</h4>
+              <div id="dependents-container">
+                <?php if (!empty($preAppData['dependents'])): ?>
+                  <?php foreach ($preAppData['dependents'] as $index => $dep): ?>
+                  <div class="dependent-row grid-3" style="margin-bottom:10px;">
+                    <div class="form-group">
+                      <label class="form-label">Name</label>
+                      <input type="text" name="dep_name[]" class="form-control" value="<?= htmlspecialchars($dep['name'] ?? '') ?>">
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">Date of Birth</label>
+                      <input type="date" name="dep_dob[]" class="form-control" value="<?= htmlspecialchars($dep['dob'] ?? '') ?>">
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label">Relationship</label>
+                      <input type="text" name="dep_rel[]" class="form-control" value="<?= htmlspecialchars($dep['rel'] ?? '') ?>">
+                    </div>
+                  </div>
+                  <?php endforeach; ?>
+                <?php endif; ?>
+              </div>
+              <button type="button" class="btn btn-outline" onclick="addDependent()">+ Add Dependent</button>
+
+              <!-- ADDITIONAL INFO -->
+              <h4 style="margin:24px 0 16px 0; color:var(--primary);">Additional Information</h4>
+              <div class="grid-2">
+                <div class="form-group">
+                  <label class="form-label">Age</label>
+                  <input type="number" name="age" class="form-control" value="<?= htmlspecialchars($preAppData['age'] ?? '') ?>">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Sex</label>
+                  <select name="sex" class="form-control">
+                    <option value="">— Select —</option>
+                    <option value="Male" <?= ($preAppData['sex'] ?? '') === 'Male' ? 'selected' : '' ?>>Male</option>
+                    <option value="Female" <?= ($preAppData['sex'] ?? '') === 'Female' ? 'selected' : '' ?>>Female</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Civil Status</label>
+                  <select name="civil_status" class="form-control">
+                    <option value="">— Select —</option>
+                    <option value="Single" <?= ($preAppData['civil_status'] ?? '') === 'Single' ? 'selected' : '' ?>>Single</option>
+                    <option value="Married" <?= ($preAppData['civil_status'] ?? '') === 'Married' ? 'selected' : '' ?>>Married</option>
+                    <option value="Widowed" <?= ($preAppData['civil_status'] ?? '') === 'Widowed' ? 'selected' : '' ?>>Widowed</option>
+                    <option value="Divorced" <?= ($preAppData['civil_status'] ?? '') === 'Divorced' ? 'selected' : '' ?>>Divorced</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Occupation</label>
+                  <input type="text" name="occupation" class="form-control" value="<?= htmlspecialchars($preAppData['occupation'] ?? '') ?>">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Residence Certificate</label>
+                  <input type="text" name="res_cert" class="form-control" value="<?= htmlspecialchars($preAppData['res_cert'] ?? '') ?>">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Residence Types</label>
+                  <input type="text" name="residence_types" class="form-control" value="<?= htmlspecialchars(is_array($preAppData['residence_types']) ? implode(', ', $preAppData['residence_types']) : '') ?>">
+                </div>
+              </div>
+
+              <hr style="margin:24px 0; border:0; border-top:1px solid var(--border);">
+
+              <!-- LOAN DETAILS -->
+              <h4 style="margin-bottom:16px; color:var(--primary);">Loan Details</h4>
                 <select name="loan_type_id" class="form-control" required id="loanTypeSelect">
                   <option value="">— Select Loan Type —</option>
                   <?php

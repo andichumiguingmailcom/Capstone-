@@ -63,8 +63,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         // Update status in pre_applications table
-        $stmtUpdate = $db->prepare("UPDATE pre_applications SET status=?, admin_notes=?, verified_at=NOW() WHERE id=?");
-        $stmtUpdate->bind_param('ssi', $action, $notes, $id);
+        $memberIdForUpdate = ($action === 'approved' && isset($newMemberId)) ? $newMemberId : null;
+        $stmtUpdate = $db->prepare("UPDATE pre_applications SET status=?, admin_notes=?, verified_at=NOW(), member_id=? WHERE id=?");
+        $stmtUpdate->bind_param('ssii', $action, $notes, $memberIdForUpdate, $id);
         $stmtUpdate->execute();
 
         // Send Email Notification via PHPMailer
@@ -166,7 +167,27 @@ $apps = $db->query("SELECT *,
                   data-name="<?= htmlspecialchars($a['full_name']) ?>"
                   data-status="<?= $a['status'] ?>"
                   data-notes="<?= htmlspecialchars($a['admin_notes'] ?? '') ?>"
-                  data-details='<?= htmlspecialchars($a['details_json'] ?? '{}', ENT_QUOTES, 'UTF-8') ?>'>
+                  data-details='<?= htmlspecialchars(json_encode([
+                    'dob' => $a['dob'],
+                    'sex' => $a['sex'],
+                    'civil_status' => $a['civil_status'],
+                    'occupation' => $a['occupation'],
+                    'res_cert' => $a['res_cert'],
+                    'residence_types' => json_decode($a['residence_types'] ?? '[]', true),
+                    'spouse' => ['name' => $a['spouse_name'], 'dob' => $a['spouse_dob'], 'job' => $a['spouse_job']],
+                    'business' => ['name' => $a['business_name'], 'facebook' => $a['business_facebook']],
+                    'beneficiary' => ['name' => $a['beneficiary_name'], 'dob' => $a['beneficiary_dob'], 'sex' => $a['beneficiary_sex'], 'relationship' => $a['beneficiary_relationship']],
+                    'income' => ['gross' => $a['gross_income'], 'expenses' => $a['expenses'], 'net' => $a['net_income']],
+                    'outstanding' => ['creditor' => $a['outstanding_creditor'], 'address' => $a['outstanding_address'], 'amount' => $a['outstanding_amount'], 'due_date' => $a['outstanding_due_date']],
+                    'dependents' => [
+                      'names' => json_decode($a['dependents_name'] ?? '[]', true),
+                      'dobs' => json_decode($a['dependents_dob'] ?? '[]', true),
+                      'ages' => json_decode($a['dependents_age'] ?? '[]', true),
+                      'relationships' => json_decode($a['dependents_relationship'] ?? '[]', true)
+                    ],
+                    'declaration' => $a['declaration'],
+                    'signature' => $a['signature']
+                  ]), ENT_QUOTES, 'UTF-8') ?>'>
                 <td class="text-muted">#<?= $a['id'] ?></td>
                 <td><div class="fw-600"><?= htmlspecialchars($a['full_name']) ?></div></td> 
                 <td><div><?= htmlspecialchars($a['email']) ?></div><div class="text-muted text-sm"><?= $a['phone'] ?></div></td>
@@ -270,18 +291,16 @@ function reviewApp(row) {
     html += `<div style="margin-top:10px; color:#1a6b3a;"><strong>Income:</strong> Gross: ₱${parseFloat(details.income.gross || 0).toLocaleString()}, Expenses: ₱${parseFloat(details.income.expenses || 0).toLocaleString()}, Net: ₱${parseFloat(details.income.net || 0).toLocaleString()}</div>`;
   }
 
-  if (details.dependents && details.dependents.length > 0) {
-    html += `<div style="margin-top:15px;"><strong>Dependents:</strong><ul style="margin:5px 0 0 20px; padding:0;">`;
-    details.dependents.forEach(d => {
-      html += `<li>${d.name} (Date of Birth: ${d.dob || '—'}, Age: ${d.age || '—'}, Relationship: ${d.rel || '—'})</li>`;
-    });
+  if (details.outstanding && details.outstanding.creditor) {
+    html += `<div style="margin-top:15px;"><strong>Outstanding Loan:</strong><ul style="margin:5px 0 0 20px; padding:0;">`;
+    html += `<li>Creditor: ${details.outstanding.creditor}, Address: ${details.outstanding.address || '—'}, Amount: ₱${parseFloat(details.outstanding.amount || 0).toLocaleString()}, Due Date: ${details.outstanding.due_date || '—'}</li>`;
     html += `</ul></div>`;
   }
 
-  if (details.obligations && details.obligations.length > 0) {
-    html += `<div style="margin-top:15px;"><strong>Outstanding Loans:</strong><ul style="margin:5px 0 0 20px; padding:0;">`;
-    details.obligations.forEach(o => {
-      html += `<li>${o.creditor} (Address: ${o.address || '—'}, Amount: ₱${parseFloat(o.amount || 0).toLocaleString()}, Due Date: ${o.due_date || '—'})</li>`;
+  if (details.dependents && details.dependents.names && details.dependents.names.length > 0) {
+    html += `<div style="margin-top:15px;"><strong>Dependents:</strong><ul style="margin:5px 0 0 20px; padding:0;">`;
+    details.dependents.names.forEach((name, i) => {
+      html += `<li>${name} (Date of Birth: ${details.dependents.dobs[i] || '—'}, Age: ${details.dependents.ages[i] || '—'}, Relationship: ${details.dependents.relationships[i] || '—'})</li>`;
     });
     html += `</ul></div>`;
   }

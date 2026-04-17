@@ -19,22 +19,56 @@ $msg = ''; $msgType = 'green';
 
 // Fetch pre-application data for pre-filling
 $preAppData = [];
-$preApp = null;
-$member = $db->query("SELECT email, phone, first_name, middle_name, last_name FROM members WHERE id=$memberId")->fetch_assoc();
-if ($member) {
-    $stmt = $db->prepare("SELECT * FROM pre_applications WHERE email=? OR phone=? OR (first_name=? AND last_name=?) LIMIT 1");
-    $stmt->bind_param('ssss', $member['email'], $member['phone'], $member['first_name'], $member['last_name']);
-    $stmt->execute();
-    $preApp = $stmt->get_result()->fetch_assoc();
-}
+$preApp = $db->query("SELECT * FROM pre_applications WHERE member_id=$memberId AND status='approved' LIMIT 1")->fetch_assoc();
 if ($preApp) {
     $preAppData = $preApp;
-    if (!empty($preApp['details_json'])) {
-        $details = json_decode($preApp['details_json'], true);
-        if (is_array($details)) {
-            $preAppData = array_merge($preAppData, $details);
-        }
+    // Decode JSON fields
+    if (!empty($preApp['residence_types'])) {
+        $preAppData['residence_types'] = json_decode($preApp['residence_types'], true) ?: [];
+    } else {
+        $preAppData['residence_types'] = [];
     }
+    // Reconstruct dependents from separate columns
+    $depNames = json_decode($preApp['dependents_name'] ?? '[]', true) ?: [];
+    $depDobs = json_decode($preApp['dependents_dob'] ?? '[]', true) ?: [];
+    $depAges = json_decode($preApp['dependents_age'] ?? '[]', true) ?: [];
+    $depRels = json_decode($preApp['dependents_relationship'] ?? '[]', true) ?: [];
+    $preAppData['dependents'] = [];
+    for ($i = 0; $i < count($depNames); $i++) {
+        $preAppData['dependents'][] = [
+            'name' => $depNames[$i] ?? '',
+            'dob' => $depDobs[$i] ?? '',
+            'age' => $depAges[$i] ?? '',
+            'rel' => $depRels[$i] ?? ''
+        ];
+    }
+    // Create nested structures for spouse, business, beneficiary, income
+    $preAppData['spouse'] = [
+        'name' => $preApp['spouse_name'] ?? '',
+        'dob' => $preApp['spouse_dob'] ?? '',
+        'job' => $preApp['spouse_job'] ?? ''
+    ];
+    $preAppData['business'] = [
+        'name' => $preApp['business_name'] ?? '',
+        'facebook' => $preApp['business_facebook'] ?? ''
+    ];
+    $preAppData['beneficiary'] = [
+        'name' => $preApp['beneficiary_name'] ?? '',
+        'dob' => $preApp['beneficiary_dob'] ?? '',
+        'sex' => $preApp['beneficiary_sex'] ?? '',
+        'relationship' => $preApp['beneficiary_relationship'] ?? ''
+    ];
+    $preAppData['income'] = [
+        'gross' => $preApp['gross_income'] ?? '',
+        'expenses' => $preApp['expenses'] ?? '',
+        'net' => $preApp['net_income'] ?? ''
+    ];
+    $preAppData['outstanding'] = [
+        'creditor' => $preApp['outstanding_creditor'] ?? '',
+        'address' => $preApp['outstanding_address'] ?? '',
+        'amount' => $preApp['outstanding_amount'] ?? '',
+        'due_date' => $preApp['outstanding_due_date'] ?? ''
+    ];
 }
 
 
@@ -91,8 +125,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'expenses' => clean($_POST['expenses'] ?? ''),
             'net' => clean($_POST['net'] ?? '')
         ],
-        'dependents' => [],
-        'obligations' => []
+        'outstanding' => [
+            'creditor' => clean($_POST['out_creditor'] ?? ''),
+            'address' => clean($_POST['out_address'] ?? ''),
+            'amount' => clean($_POST['out_amount'] ?? ''),
+            'due_date' => clean($_POST['out_due_date'] ?? '')
+        ],
+        'dependents' => []
     ];
 
     // Process Dependents
@@ -104,19 +143,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'dob'  => clean($_POST['dep_dob'][$i] ?? ''),
                 'age'  => clean($_POST['dep_age'][$i] ?? ''),
                 'rel'  => clean($_POST['dep_rel'][$i] ?? '')
-            ];
-        }
-    }
-
-    // Process Outstanding Loans
-    if (!empty($_POST['creditor'])) {
-        foreach ($_POST['creditor'] as $i => $cred) {
-            if (empty($cred)) continue;
-            $personalDetails['obligations'][] = [
-                'creditor' => clean($cred),
-                'address' => clean($_POST['cred_addr'][$i] ?? ''),
-                'amount' => clean($_POST['cred_amount'][$i] ?? ''),
-                'due_date' => clean($_POST['cred_due'][$i] ?? '')
             ];
         }
     }
@@ -332,28 +358,27 @@ $loanTypes = $db->query("SELECT * FROM loan_types ORDER BY type_name");
           </div>
 
           <!-- OUTSTANDING LOANS -->
-          <h4 style="margin:24px 0 16px; color:var(--primary);">Outstanding Loans</h4>
-          <div id="obligations-container">
-            <?php $obligations = $preAppData['obligations'] ?? []; ?>
-            <?php if (empty($obligations)): ?>
-              <div class="obligation-row grid-4" style="gap:10px; margin-bottom:10px;">
-                <input type="text" name="creditor[]" class="form-control" placeholder="Creditor">
-                <input type="text" name="cred_addr[]" class="form-control" placeholder="Address">
-                <input type="number" name="cred_amount[]" class="form-control" placeholder="Amount" step="0.01">
-                <input type="date" name="cred_due[]" class="form-control" placeholder="Due Date">
+          <div>
+            <h4 style="margin:24px 0 16px; color:var(--primary);">Outstanding Loans (if any)</h4>
+            <div class="grid-4">
+              <div class="form-group">
+                <label class="form-label">Creditor Name</label>
+                <input type="text" name="out_creditor" class="form-control" value="<?= htmlspecialchars($preAppData['outstanding']['creditor'] ?? '') ?>">
               </div>
-            <?php else: ?>
-              <?php foreach ($obligations as $obl): ?>
-                <div class="obligation-row grid-4" style="gap:10px; margin-bottom:10px;">
-                  <input type="text" name="creditor[]" class="form-control" placeholder="Creditor" value="<?= htmlspecialchars($obl['creditor'] ?? '') ?>">
-                  <input type="text" name="cred_addr[]" class="form-control" placeholder="Address" value="<?= htmlspecialchars($obl['address'] ?? '') ?>">
-                  <input type="number" name="cred_amount[]" class="form-control" placeholder="Amount" value="<?= htmlspecialchars($obl['amount'] ?? '') ?>" step="0.01">
-                  <input type="date" name="cred_due[]" class="form-control" placeholder="Due Date" value="<?= htmlspecialchars($obl['due_date'] ?? '') ?>">
-                </div>
-              <?php endforeach; ?>
-            <?php endif; ?>
+              <div class="form-group">
+                <label class="form-label">Address</label>
+                <input type="text" name="out_address" class="form-control" value="<?= htmlspecialchars($preAppData['outstanding']['address'] ?? '') ?>">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Amount (₱)</label>
+                <input type="number" name="out_amount" class="form-control" value="<?= htmlspecialchars($preAppData['outstanding']['amount'] ?? '') ?>" step="0.01">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Due Date</label>
+                <input type="date" name="out_due_date" class="form-control" value="<?= htmlspecialchars($preAppData['outstanding']['due_date'] ?? '') ?>">
+              </div>
+            </div>
           </div>
-          <button type="button" class="btn btn-outline" onclick="addObligation()">+ Add Outstanding Loan</button>
 
           <hr style="margin:24px 0; border:0; border-top:1px solid var(--border);">
 
@@ -415,20 +440,6 @@ function addDependent() {
     <input type="date" name="dep_dob[]" class="form-control" placeholder="DOB">
     <input type="number" name="dep_age[]" class="form-control" placeholder="Age">
     <input type="text" name="dep_rel[]" class="form-control" placeholder="Relationship">
-  `;
-  container.appendChild(row);
-}
-
-function addObligation() {
-  const container = document.getElementById('obligations-container');
-  const row = document.createElement('div');
-  row.className = 'obligation-row grid-4';
-  row.style.cssText = 'gap:10px; margin-bottom:10px;';
-  row.innerHTML = `
-    <input type="text" name="creditor[]" class="form-control" placeholder="Creditor">
-    <input type="text" name="cred_addr[]" class="form-control" placeholder="Address">
-    <input type="number" name="cred_amount[]" class="form-control" placeholder="Amount" step="0.01">
-    <input type="date" name="cred_due[]" class="form-control" placeholder="Due Date">
   `;
   container.appendChild(row);
 }

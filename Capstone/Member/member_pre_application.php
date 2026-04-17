@@ -111,85 +111,67 @@ define('SMTP_PORT', 587);
 $msg = ''; $submitted = false;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $name = clean($_POST['name'] ?? '');
+    $fname = clean($_POST['first_name'] ?? '');
+    $mname = clean($_POST['middle_name'] ?? '');
+    $lname = clean($_POST['last_name'] ?? '');
     $email = clean($_POST['email'] ?? '');
     $phone = clean($_POST['phone'] ?? '');
-    $address = clean($_POST['address'] ?? '');
+    $street = clean($_POST['street'] ?? '');
+    $brgy = clean($_POST['barangay'] ?? '');
+    $city = clean($_POST['city'] ?? '');
+    $prov = clean($_POST['province'] ?? '');
     $initialCapital = (float)($_POST['initial_capital'] ?? 5000);
 
-    // Splitting name for existing database schema compatibility
-    $nameParts = explode(' ', $name);
-    $fname = $nameParts[0] ?? '';
-    $lname = count($nameParts) > 1 ? end($nameParts) : $name;
-    $mname = count($nameParts) > 2 ? implode(' ', array_slice($nameParts, 1, -1)) : '';
+    // Capture all the new detailed fields
+    $dob = clean($_POST['dob'] ?? '');
+    $sex = clean($_POST['sex'] ?? '');
+    $civilStatus = clean($_POST['civil_status'] ?? '');
+    $occupation = clean($_POST['occupation'] ?? '');
+    $resCert = clean($_POST['res_cert'] ?? '');
+    $residenceTypes = json_encode($_POST['residence'] ?? []);
+    
+    $spouseName = clean($_POST['spouse'] ?? '');
+    $spouseDob = clean($_POST['spouse_dob'] ?? '');
+    $spouseJob = clean($_POST['spouse_job'] ?? '');
+    
+    $businessName = clean($_POST['business'] ?? '');
+    $businessFacebook = clean($_POST['facebook'] ?? '');
+    
+    $beneficiaryName = clean($_POST['beneficiary'] ?? '');
+    $beneficiaryDob = clean($_POST['ben_dob'] ?? '');
+    $beneficiarySex = clean($_POST['ben_sex'] ?? '');
+    $beneficiaryRelationship = clean($_POST['relationship'] ?? '');
+    
+    $grossIncome = !empty($_POST['gross']) ? (float)$_POST['gross'] : null;
+    $expenses = !empty($_POST['expenses']) ? (float)$_POST['expenses'] : null;
+    $netIncome = !empty($_POST['net']) ? (float)$_POST['net'] : null;
+    
+    $outstandingCreditor = clean($_POST['out_creditor'] ?? '');
+    $outstandingAddress = clean($_POST['out_address'] ?? '');
+    $outstandingAmount = !empty($_POST['out_amount']) ? (float)$_POST['out_amount'] : null;
+    $outstandingDueDate = clean($_POST['out_due_date'] ?? '');
+    
+    $declaration = clean($_POST['declaration'] ?? '');
+    $signature = clean($_POST['signature'] ?? '');
 
-    // Simple address mapping to the street column
-    $street = $address;
-    $brgy = '';
-    $city = '';
-    $prov = '';
-
-    // Capture all the new detailed fields into a structured array
-    $extraDetails = [
-        'dob' => clean($_POST['dob'] ?? ''),
-        'age' => clean($_POST['age'] ?? ''),
-        'sex' => clean($_POST['sex'] ?? ''),
-        'civil_status' => clean($_POST['civil_status'] ?? ''),
-        'res_cert' => clean($_POST['res_cert'] ?? ''),
-        'occupation' => clean($_POST['occupation'] ?? ''),
-        'residence_types' => $_POST['residence'] ?? [],
-        'spouse' => [
-            'name' => clean($_POST['spouse'] ?? ''),
-            'dob' => clean($_POST['spouse_dob'] ?? ''),
-            'job' => clean($_POST['spouse_job'] ?? '')
-        ],
-        'business' => [
-            'name' => clean($_POST['business'] ?? ''),
-            'facebook' => clean($_POST['facebook'] ?? '')
-        ],
-        'beneficiary' => [
-            'name' => clean($_POST['beneficiary'] ?? ''),
-            'dob' => clean($_POST['ben_dob'] ?? ''),
-            'sex' => clean($_POST['ben_sex'] ?? ''),
-            'relationship' => clean($_POST['relationship'] ?? '')
-        ],
-        'income' => [
-            'gross' => clean($_POST['gross'] ?? ''),
-            'expenses' => clean($_POST['expenses'] ?? ''),
-            'net' => clean($_POST['net'] ?? '')
-        ],
-        'dependents' => [],
-        'obligations' => [],
-        'declaration' => clean($_POST['declaration'] ?? ''),
-        'signature' => clean($_POST['signature'] ?? '')
-    ];
-
-    // Process Dependents Table
+    // Process Dependents into separate arrays
+    $dependentNames = [];
+    $dependentDobs = [];
+    $dependentAges = [];
+    $dependentRelationships = [];
     if (!empty($_POST['dep_name'])) {
         foreach ($_POST['dep_name'] as $i => $dn) {
             if (empty($dn)) continue;
-            $extraDetails['dependents'][] = [
-                'name' => clean($dn),
-                'dob'  => clean($_POST['dep_dob'][$i] ?? ''),
-                'age'  => clean($_POST['dep_age'][$i] ?? ''),
-                'rel'  => clean($_POST['dep_rel'][$i] ?? '')
-            ];
+            $dependentNames[] = clean($dn);
+            $dependentDobs[] = clean($_POST['dep_dob'][$i] ?? '');
+            $dependentAges[] = clean($_POST['dep_age'][$i] ?? '');
+            $dependentRelationships[] = clean($_POST['dep_rel'][$i] ?? '');
         }
     }
-
-    // Process Outstanding Loans
-    if (!empty($_POST['creditor'])) {
-        foreach ($_POST['creditor'] as $i => $cred) {
-            if (empty($cred)) continue;
-            $extraDetails['obligations'][] = [
-                'creditor' => clean($cred),
-                'address' => clean($_POST['cred_addr'][$i] ?? ''),
-                'amount' => clean($_POST['cred_amount'][$i] ?? ''),
-                'due_date' => clean($_POST['cred_due'][$i] ?? '')
-            ];
-        }
-    }
-    $detailsJson = json_encode($extraDetails);
+    $dependentNamesJson = json_encode($dependentNames);
+    $dependentDobsJson = json_encode($dependentDobs);
+    $dependentAgesJson = json_encode($dependentAges);
+    $dependentRelationshipsJson = json_encode($dependentRelationships);
 
     // Required ID upload
     $idDoc = $_FILES['id_document'] ?? null;
@@ -202,8 +184,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $msg = 'Please upload a valid ID document.';
     } else {
         $db = getDB();
-        $stmt = $db->prepare("INSERT INTO pre_applications (first_name, middle_name, last_name, email, phone, street, barangay, city, province, initial_capital, details_json) VALUES (?,?,?,?,?,?,?,?,?,?,?)");
-        $stmt->bind_param('sssssssssds', $fname, $mname, $lname, $email, $phone, $street, $brgy, $city, $prov, $initialCapital, $detailsJson);
+        $stmt = $db->prepare("INSERT INTO pre_applications (first_name, middle_name, last_name, email, phone, street, barangay, city, province, initial_capital, dob, sex, civil_status, occupation, res_cert, residence_types, spouse_name, spouse_dob, spouse_job, business_name, business_facebook, beneficiary_name, beneficiary_dob, beneficiary_sex, beneficiary_relationship, gross_income, expenses, net_income, outstanding_creditor, outstanding_address, outstanding_amount, outstanding_due_date, declaration, signature, dependents_name, dependents_dob, dependents_age, dependents_relationship) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+        $stmt->bind_param('sssssssssdssssssssssssssdddsdsssssss', $fname, $mname, $lname, $email, $phone, $street, $brgy, $city, $prov, $initialCapital, $dob, $sex, $civilStatus, $occupation, $resCert, $residenceTypes, $spouseName, $spouseDob, $spouseJob, $businessName, $businessFacebook, $beneficiaryName, $beneficiaryDob, $beneficiarySex, $beneficiaryRelationship, $grossIncome, $expenses, $netIncome, $outstandingCreditor, $outstandingAddress, $outstandingAmount, $outstandingDueDate, $declaration, $signature, $dependentNamesJson, $dependentDobsJson, $dependentAgesJson, $dependentRelationshipsJson);
         $stmt->execute();
         $appId = $db->insert_id;
 
@@ -327,30 +309,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <form method="POST" enctype="multipart/form-data">
           <!-- APPLICANT -->
           <div class="section-title">Applicant Information</div>
-          <div class="form-group"><label class="form-label">Full Name <span style="color:var(--danger);">*</span></label><input type="text" name="name" class="form-control" required></div>
+          <div class="form-row three">
+            <div class="form-group"><label class="form-label">First Name <span style="color:var(--danger);">*</span></label><input type="text" name="first_name" class="form-control" required></div>
+            <div class="form-group"><label class="form-label">Middle Name</label><input type="text" name="middle_name" class="form-control"></div>
+            <div class="form-group"><label class="form-label">Last Name <span style="color:var(--danger);">*</span></label><input type="text" name="last_name" class="form-control" required></div>
+          </div>
           <div class="form-row">
             <div class="form-group"><label class="form-label">Date of Birth</label><input type="date" name="dob" class="form-control"></div>
-            <div class="form-group"><label class="form-label">Age</label><input type="number" name="age" class="form-control"></div>
             <div class="form-group"><label class="form-label">Sex</label>
               <select name="sex" class="form-control">
-                <option>Male</option><option>Female</option>
+                <option value="">Select...</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
               </select>
             </div>
-          </div>
-          <div class="form-row">
             <div class="form-group"><label class="form-label">Civil Status</label>
               <select name="civil_status" class="form-control">
-                <option>Single</option><option>Married</option><option>Widow</option>
+                <option value="">Select...</option>
+                <option value="Single">Single</option>
+                <option value="Married">Married</option>
+                <option value="Separated">Separated</option>
+                <option value="Divorced">Divorced</option>
+                <option value="Widowed">Widowed</option>
               </select>
             </div>
-            <div class="form-group"><label class="form-label">Residence Cert No</label><input type="text" name="res_cert" class="form-control"></div>
           </div>
           <div class="form-row">
-            <div class="form-group"><label class="form-label">Phone <span style="color:var(--danger);">*</span></label><input type="text" name="phone" class="form-control" required></div>
             <div class="form-group"><label class="form-label">Email <span style="color:var(--danger);">*</span></label><input type="email" name="email" class="form-control" required></div>
+            <div class="form-group"><label class="form-label">Phone <span style="color:var(--danger);">*</span></label><input type="text" name="phone" class="form-control" required></div>
           </div>
-          <div class="form-group"><label class="form-label">Occupation</label><input type="text" name="occupation" class="form-control"></div>
-          <div class="form-group"><label class="form-label">Address</label><input type="text" name="address" class="form-control"></div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Occupation</label><input type="text" name="occupation" class="form-control"></div>
+            <div class="form-group"><label class="form-label">Residence Cert No</label><input type="text" name="res_cert" class="form-control"></div>
+          </div>
+          
+          <!-- ADDRESS -->
+          <div class="section-title">Address Information</div>
+          <div class="form-row">
+            <div class="form-group" style="flex: 1.5;"><label class="form-label">Street</label><input type="text" name="street" class="form-control"></div>
+            <div class="form-group"><label class="form-label">Barangay</label><input type="text" name="barangay" class="form-control"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">City/Municipality</label><input type="text" name="city" class="form-control"></div>
+            <div class="form-group"><label class="form-label">Province</label><input type="text" name="province" class="form-control"></div>
+          </div>
           
           <div class="form-group">
             <label class="form-label">Residence Type</label>
@@ -423,20 +425,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="form-group"><label class="form-label">Net Income</label><input type="number" name="net" class="form-control"></div>
           </div>
 
-          <!-- OBLIGATIONS -->
-          <div class="section-title">Outstanding Loans</div>
-          <div class="table-wrap">
-            <table class="loan-table">
-              <thead><tr><th>Creditor</th><th>Address</th><th>Amount</th><th>Due Date</th></tr></thead>
-              <tbody>
-                <tr>
-                  <td><input type="text" name="creditor[]" class="form-control"></td>
-                  <td><input type="text" name="cred_addr[]" class="form-control"></td>
-                  <td><input type="number" name="cred_amount[]" class="form-control"></td>
-                  <td><input type="date" name="cred_due[]" class="form-control"></td>
-                </tr>
-              </tbody>
-            </table>
+          <!-- OUTSTANDING LOANS -->
+          <div class="section-title">Outstanding Loans (if any)</div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Creditor Name</label><input type="text" name="out_creditor" class="form-control"></div>
+            <div class="form-group"><label class="form-label">Address</label><input type="text" name="out_address" class="form-control"></div>
+            <div class="form-group"><label class="form-label">Amount (₱)</label><input type="number" name="out_amount" class="form-control" step="0.01"></div>
+            <div class="form-group"><label class="form-label">Due Date</label><input type="date" name="out_due_date" class="form-control"></div>
           </div>
 
           <!-- DECLARATION -->

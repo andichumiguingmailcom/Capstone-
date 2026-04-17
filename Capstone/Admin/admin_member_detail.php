@@ -30,9 +30,29 @@ if (!$member) {
 
 // Fetch pre-application details
 $preAppDetails = null;
-$preApp = $db->query("SELECT details_json FROM pre_applications WHERE first_name='" . $db->real_escape_string($member['first_name']) . "' AND last_name='" . $db->real_escape_string($member['last_name']) . "' AND email='" . $db->real_escape_string($member['email']) . "' LIMIT 1")->fetch_assoc();
-if ($preApp && $preApp['details_json']) {
-    $preAppDetails = json_decode($preApp['details_json'], true);
+$preApp = $db->query("SELECT * FROM pre_applications WHERE member_id=" . (int)$id . " AND status='approved' LIMIT 1")->fetch_assoc();
+if ($preApp) {
+    $preAppDetails = [
+        'dob' => $preApp['dob'],
+        'sex' => $preApp['sex'],
+        'civil_status' => $preApp['civil_status'],
+        'occupation' => $preApp['occupation'],
+        'res_cert' => $preApp['res_cert'],
+        'residence_types' => json_decode($preApp['residence_types'] ?? '[]', true) ?: [],
+        'spouse' => ['name' => $preApp['spouse_name'], 'dob' => $preApp['spouse_dob'], 'job' => $preApp['spouse_job']],
+        'business' => ['name' => $preApp['business_name'], 'facebook' => $preApp['business_facebook']],
+        'beneficiary' => ['name' => $preApp['beneficiary_name'], 'dob' => $preApp['beneficiary_dob'], 'sex' => $preApp['beneficiary_sex'], 'relationship' => $preApp['beneficiary_relationship']],
+        'income' => ['gross' => $preApp['gross_income'], 'expenses' => $preApp['expenses'], 'net' => $preApp['net_income']],
+        'outstanding' => ['creditor' => $preApp['outstanding_creditor'], 'address' => $preApp['outstanding_address'], 'amount' => $preApp['outstanding_amount'], 'due_date' => $preApp['outstanding_due_date']],
+        'dependents' => [
+            'names' => json_decode($preApp['dependents_name'] ?? '[]', true) ?: [],
+            'dobs' => json_decode($preApp['dependents_dob'] ?? '[]', true) ?: [],
+            'ages' => json_decode($preApp['dependents_age'] ?? '[]', true) ?: [],
+            'relationships' => json_decode($preApp['dependents_relationship'] ?? '[]', true) ?: []
+        ],
+        'declaration' => $preApp['declaration'],
+        'signature' => $preApp['signature']
+    ];
 }
 
 // If viewing documents section, display documents only
@@ -235,23 +255,21 @@ $payments = $db->query("SELECT lp.*, l.principal FROM loan_payments lp
           <div>Gross: <?= htmlspecialchars($preAppDetails['income']['gross'] ?? '—') ?>, Expenses: <?= htmlspecialchars($preAppDetails['income']['expenses'] ?? '—') ?>, Net: <?= htmlspecialchars($preAppDetails['income']['net'] ?? '—') ?></div>
         </div>
         <?php endif; ?>
-        <?php if (!empty($preAppDetails['dependents'])): ?>
+        <?php if (!empty($preAppDetails['dependents']['names']) && is_array($preAppDetails['dependents']['names'])): ?>
         <div class="form-group">
           <label class="form-label">Dependents</label>
           <ul>
-            <?php foreach ($preAppDetails['dependents'] as $dep): ?>
-            <li>Name: <?= htmlspecialchars($dep['name'] ?? '—') ?>, Date of Birth: <?= htmlspecialchars($dep['dob'] ?? '—') ?>, Age: <?= htmlspecialchars($dep['age'] ?? '—') ?>, Relationship: <?= htmlspecialchars($dep['rel'] ?? '—') ?></li>
+            <?php foreach ($preAppDetails['dependents']['names'] as $i => $name): ?>
+            <li>Name: <?= htmlspecialchars($name ?? '—') ?>, Date of Birth: <?= htmlspecialchars($preAppDetails['dependents']['dobs'][$i] ?? '—') ?>, Age: <?= htmlspecialchars($preAppDetails['dependents']['ages'][$i] ?? '—') ?>, Relationship: <?= htmlspecialchars($preAppDetails['dependents']['relationships'][$i] ?? '—') ?></li>
             <?php endforeach; ?>
           </ul>
         </div>
         <?php endif; ?>
-        <?php if (!empty($preAppDetails['obligations'])): ?>
+        <?php if (!empty($preAppDetails['outstanding']['creditor'])): ?>
         <div class="form-group">
-          <label class="form-label">Outstanding Loans</label>
+          <label class="form-label">Outstanding Loan</label>
           <ul>
-            <?php foreach ($preAppDetails['obligations'] as $obl): ?>
-            <li>Creditor: <?= htmlspecialchars($obl['creditor'] ?? '—') ?>, Address: <?= htmlspecialchars($obl['address'] ?? '—') ?>, Amount: ₱<?= htmlspecialchars($obl['amount'] ?? '—') ?>, Due Date: <?= htmlspecialchars($obl['due_date'] ?? '—') ?></li>
-            <?php endforeach; ?>
+            <li>Creditor: <?= htmlspecialchars($preAppDetails['outstanding']['creditor'] ?? '—') ?>, Address: <?= htmlspecialchars($preAppDetails['outstanding']['address'] ?? '—') ?>, Amount: ₱<?= htmlspecialchars($preAppDetails['outstanding']['amount'] ?? '—') ?>, Due Date: <?= htmlspecialchars($preAppDetails['outstanding']['due_date'] ?? '—') ?></li>
           </ul>
         </div>
         <?php endif; ?>
@@ -259,6 +277,25 @@ $payments = $db->query("SELECT lp.*, l.principal FROM loan_payments lp
         <div class="form-group">
           <label class="form-label">Declaration</label>
           <div style="font-style:italic;"><?= htmlspecialchars($preAppDetails['declaration']) ?></div>
+        </div>
+        <?php endif; ?>
+        <?php if (!empty($preApp['loan_type_id']) || !empty($preApp['amount']) || !empty($preApp['term_months']) || !empty($preApp['purpose'])): ?>
+        <div class="form-group">
+          <label class="form-label">Loan Application</label>
+          <div>
+            <?php if (!empty($preApp['loan_type_id'])): ?>
+              Type ID: <?= htmlspecialchars($preApp['loan_type_id']) ?><br>
+            <?php endif; ?>
+            <?php if (!empty($preApp['amount'])): ?>
+              Amount: ₱<?= number_format($preApp['amount'], 2) ?><br>
+            <?php endif; ?>
+            <?php if (!empty($preApp['term_months'])): ?>
+              Term: <?= htmlspecialchars($preApp['term_months']) ?> months<br>
+            <?php endif; ?>
+            <?php if (!empty($preApp['purpose'])): ?>
+              Purpose: <?= htmlspecialchars($preApp['purpose']) ?>
+            <?php endif; ?>
+          </div>
         </div>
         <?php endif; ?>
       </div>

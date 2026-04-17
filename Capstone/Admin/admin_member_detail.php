@@ -229,12 +229,6 @@ $payments = $db->query("SELECT lp.*, l.principal FROM loan_payments lp
           <div>Name: <?= htmlspecialchars($preAppDetails['beneficiary']['name'] ?? '—') ?>, Date of Birth: <?= htmlspecialchars($preAppDetails['beneficiary']['dob'] ?? '—') ?>, Sex: <?= htmlspecialchars($preAppDetails['beneficiary']['sex'] ?? '—') ?>, Relationship: <?= htmlspecialchars($preAppDetails['beneficiary']['relationship'] ?? '—') ?></div>
         </div>
         <?php endif; ?>
-        <?php if (!empty($preAppDetails['loan_details'])): ?>
-        <div class="form-group">
-          <label class="form-label">Loan Details</label>
-          <div>Types: <?= is_array($preAppDetails['loan_details']['types']) ? implode(', ', array_map('htmlspecialchars', $preAppDetails['loan_details']['types'])) : '—' ?>, Others: <?= htmlspecialchars($preAppDetails['loan_details']['others'] ?? '—') ?>, Rate: <?= htmlspecialchars($preAppDetails['loan_details']['rate'] ?? '—') ?>, Term: <?= htmlspecialchars($preAppDetails['loan_details']['term'] ?? '—') ?>, Mode: <?= htmlspecialchars($preAppDetails['loan_details']['mode'] ?? '—') ?></div>
-        </div>
-        <?php endif; ?>
         <?php if (!empty($preAppDetails['income'])): ?>
         <div class="form-group">
           <label class="form-label">Income Details</label>
@@ -249,6 +243,22 @@ $payments = $db->query("SELECT lp.*, l.principal FROM loan_payments lp
             <li>Name: <?= htmlspecialchars($dep['name'] ?? '—') ?>, Date of Birth: <?= htmlspecialchars($dep['dob'] ?? '—') ?>, Age: <?= htmlspecialchars($dep['age'] ?? '—') ?>, Relationship: <?= htmlspecialchars($dep['rel'] ?? '—') ?></li>
             <?php endforeach; ?>
           </ul>
+        </div>
+        <?php endif; ?>
+        <?php if (!empty($preAppDetails['obligations'])): ?>
+        <div class="form-group">
+          <label class="form-label">Outstanding Loans</label>
+          <ul>
+            <?php foreach ($preAppDetails['obligations'] as $obl): ?>
+            <li>Creditor: <?= htmlspecialchars($obl['creditor'] ?? '—') ?>, Address: <?= htmlspecialchars($obl['address'] ?? '—') ?>, Amount: ₱<?= htmlspecialchars($obl['amount'] ?? '—') ?>, Due Date: <?= htmlspecialchars($obl['due_date'] ?? '—') ?></li>
+            <?php endforeach; ?>
+          </ul>
+        </div>
+        <?php endif; ?>
+        <?php if (!empty($preAppDetails['declaration'])): ?>
+        <div class="form-group">
+          <label class="form-label">Declaration</label>
+          <div style="font-style:italic;"><?= htmlspecialchars($preAppDetails['declaration']) ?></div>
         </div>
         <?php endif; ?>
       </div>

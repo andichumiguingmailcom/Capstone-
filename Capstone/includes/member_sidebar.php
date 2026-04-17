@@ -14,7 +14,7 @@ $user = getCurrentUser();
     </a>
 
     <div class="nav-section-label">Loans</div>
-    <a href="<?= appendContextToUrl('member_loan_apply.php') ?>" class="nav-item <?= ($activePage??'') === 'loan_apply' ? 'active' : '' ?>">
+    <a href="<?= appendContextToUrl('member_loan_application_form.php') ?>" class="nav-item <?= ($activePage??'') === 'loan_apply' ? 'active' : '' ?>">
       <span class="nav-icon">📝</span> Apply for Loan
     </a>
     <a href="<?= appendContextToUrl('member_loans.php') ?>" class="nav-item <?= ($activePage??'') === 'loans' ? 'active' : '' ?>">

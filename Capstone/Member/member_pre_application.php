@@ -153,19 +153,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'sex' => clean($_POST['ben_sex'] ?? ''),
             'relationship' => clean($_POST['relationship'] ?? '')
         ],
-        'loan_details' => [
-            'types' => $_POST['loan_type'] ?? [],
-            'others' => clean($_POST['others'] ?? ''),
-            'rate' => clean($_POST['rate'] ?? ''),
-            'term' => clean($_POST['term'] ?? ''),
-            'mode' => clean($_POST['mode'] ?? '')
-        ],
         'income' => [
             'gross' => clean($_POST['gross'] ?? ''),
             'expenses' => clean($_POST['expenses'] ?? ''),
             'net' => clean($_POST['net'] ?? '')
         ],
         'dependents' => [],
+        'obligations' => [],
+        'declaration' => clean($_POST['declaration'] ?? ''),
         'signature' => clean($_POST['signature'] ?? '')
     ];
 
@@ -178,6 +173,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'dob'  => clean($_POST['dep_dob'][$i] ?? ''),
                 'age'  => clean($_POST['dep_age'][$i] ?? ''),
                 'rel'  => clean($_POST['dep_rel'][$i] ?? '')
+            ];
+        }
+    }
+
+    // Process Outstanding Loans
+    if (!empty($_POST['creditor'])) {
+        foreach ($_POST['creditor'] as $i => $cred) {
+            if (empty($cred)) continue;
+            $extraDetails['obligations'][] = [
+                'creditor' => clean($cred),
+                'address' => clean($_POST['cred_addr'][$i] ?? ''),
+                'amount' => clean($_POST['cred_amount'][$i] ?? ''),
+                'due_date' => clean($_POST['cred_due'][$i] ?? '')
             ];
         }
     }
@@ -405,26 +413,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </tr>
               </tbody>
             </table>
-          </div>
-
-          <!-- LOAN -->
-          <div class="section-title">Loan Details</div>
-          <div class="checkbox-group mb-3">
-            <label class="checkbox-item"><input type="checkbox" name="loan_type[]" value="regular"> Regular</label>
-            <label class="checkbox-item"><input type="checkbox" name="loan_type[]" value="salary"> Salary</label>
-            <label class="checkbox-item"><input type="checkbox" name="loan_type[]" value="micro"> Micro</label>
-            <label class="checkbox-item"><input type="checkbox" name="loan_type[]" value="pensioner"> Pensioner</label>
-            <label class="checkbox-item"><input type="checkbox" name="loan_type[]" value="special"> Special</label>
-            <label class="checkbox-item"><input type="checkbox" name="loan_type[]" value="agri"> Agricultural</label>
-          </div>
-          <div class="form-group"><label class="form-label">Others</label><input type="text" name="others" class="form-control"></div>
-          <div class="form-row">
-            <div class="form-group"><label class="form-label">Amount</label><input type="number" name="loan_amount" class="form-control"></div>
-            <div class="form-group"><label class="form-label">Rate (%)</label><input type="number" name="rate" class="form-control"></div>
-          </div>
-          <div class="form-row">
-            <div class="form-group"><label class="form-label">Term</label><input type="text" name="term" class="form-control"></div>
-            <div class="form-group"><label class="form-label">Mode</label><input type="text" name="mode" class="form-control"></div>
           </div>
 
           <!-- INCOME -->

@@ -32,7 +32,7 @@ $applications = $db->query("SELECT la.*, lt.type_name FROM loan_applications la
   <div class="topbar">
     <div class="topbar-title">My Loans</div>
     <div class="topbar-actions">
-      <a href="member_loan_apply.php" class="btn btn-primary">Apply for Loan</a>
+      <a href="member_loan_application_form.php" class="btn btn-primary">Apply for Loan</a>
     </div>
   </div>
 
@@ -116,7 +116,7 @@ $applications = $db->query("SELECT la.*, lt.type_name FROM loan_applications la
           <div style="text-align:center;padding:60px;color:var(--text-muted);">
             <div style="font-size:3rem;margin-bottom:12px;">💳</div>
             <div>No active loans.</div>
-            <a href="member_loan_apply.php" class="btn btn-primary" style="margin-top:16px;">Apply for a Loan</a>
+            <a href="member_loan_application_form.php" class="btn btn-primary" style="margin-top:16px;">Apply for a Loan</a>
           </div>
         <?php endif; ?>
       </div>

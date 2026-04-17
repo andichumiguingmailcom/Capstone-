@@ -266,13 +266,6 @@ function reviewApp(row) {
     html += `</div>`;
   }
 
-  if (details.loan_details) {
-    html += `<div style="margin-top:15px; background:#fff; padding:10px; border-radius:8px; border:1px solid #ddd;">`;
-    html += `<strong>Requested Loan:</strong> ${(details.loan_details.types || []).join(', ') || '—'}<br>`;
-    html += `Others: ${details.loan_details.others || '—'} | Rate: ${details.loan_details.rate || '—'} | Term: ${details.loan_details.term || '—'} | Mode: ${details.loan_details.mode || '—'}`;
-    html += `</div>`;
-  }
-
   if (details.income) {
     html += `<div style="margin-top:10px; color:#1a6b3a;"><strong>Income:</strong> Gross: ₱${parseFloat(details.income.gross || 0).toLocaleString()}, Expenses: ₱${parseFloat(details.income.expenses || 0).toLocaleString()}, Net: ₱${parseFloat(details.income.net || 0).toLocaleString()}</div>`;
   }
@@ -283,6 +276,18 @@ function reviewApp(row) {
       html += `<li>${d.name} (Date of Birth: ${d.dob || '—'}, Age: ${d.age || '—'}, Relationship: ${d.rel || '—'})</li>`;
     });
     html += `</ul></div>`;
+  }
+
+  if (details.obligations && details.obligations.length > 0) {
+    html += `<div style="margin-top:15px;"><strong>Outstanding Loans:</strong><ul style="margin:5px 0 0 20px; padding:0;">`;
+    details.obligations.forEach(o => {
+      html += `<li>${o.creditor} (Address: ${o.address || '—'}, Amount: ₱${parseFloat(o.amount || 0).toLocaleString()}, Due Date: ${o.due_date || '—'})</li>`;
+    });
+    html += `</ul></div>`;
+  }
+
+  if (details.declaration) {
+    html += `<div style="margin-top:15px; font-style:italic; color:#555;"><strong>Declaration:</strong> ${details.declaration}</div>`;
   }
 
   detailsDiv.innerHTML = html;

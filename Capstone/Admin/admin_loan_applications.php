@@ -379,6 +379,50 @@ function viewApplication(button) {
     html += `<div><strong>Date of Birth:</strong> ${details.dob || '—'}</div>`;
     html += `<div><strong>Address:</strong> ${[details.street, details.barangay, details.city, details.province].filter(Boolean).join(', ') || '—'}</div>`;
     html += `</div>`;
+
+    // Additional details
+    if (details.spouse && details.spouse.name) {
+      html += `<div style="margin-top:15px; padding-top:10px; border-top:1px solid #eee;">`;
+      html += `<strong>Spouse:</strong> ${details.spouse.name} (DOB: ${details.spouse.dob || '—'}, Job: ${details.spouse.job || '—'})`;
+      html += `</div>`;
+    }
+
+    if (details.business && details.business.name) {
+      html += `<div style="margin-top:15px; padding-top:10px; border-top:1px solid #eee;">`;
+      html += `<strong>Business:</strong> ${details.business.name} (Facebook: ${details.business.facebook || '—'})`;
+      html += `</div>`;
+    }
+
+    if (details.beneficiary && details.beneficiary.name) {
+      html += `<div style="margin-top:15px; padding-top:10px; border-top:1px solid #eee;">`;
+      html += `<strong>Beneficiary:</strong> ${details.beneficiary.name} (DOB: ${details.beneficiary.dob || '—'}, Sex: ${details.beneficiary.sex || '—'}, Relationship: ${details.beneficiary.relationship || '—'})`;
+      html += `</div>`;
+    }
+
+    if (details.income) {
+      html += `<div style="margin-top:15px; padding-top:10px; border-top:1px solid #eee;">`;
+      html += `<strong>Income:</strong> Gross: ₱${parseFloat(details.income.gross || 0).toLocaleString()}, Expenses: ₱${parseFloat(details.income.expenses || 0).toLocaleString()}, Net: ₱${parseFloat(details.income.net || 0).toLocaleString()}`;
+      html += `</div>`;
+    }
+
+    if (details.dependents && details.dependents.length > 0) {
+      html += `<div style="margin-top:15px; padding-top:10px; border-top:1px solid #eee;">`;
+      html += `<strong>Dependents:</strong><ul style="margin:5px 0 0 20px; padding:0;">`;
+      details.dependents.forEach(d => {
+        html += `<li>${d.name} (DOB: ${d.dob || '—'}, Age: ${d.age || '—'}, Relationship: ${d.rel || '—'})</li>`;
+      });
+      html += `</ul></div>`;
+    }
+
+    if (details.obligations && details.obligations.length > 0) {
+      html += `<div style="margin-top:15px; padding-top:10px; border-top:1px solid #eee;">`;
+      html += `<strong>Outstanding Loans:</strong><ul style="margin:5px 0 0 20px; padding:0;">`;
+      details.obligations.forEach(o => {
+        html += `<li>${o.creditor} (Address: ${o.address || '—'}, Amount: ₱${parseFloat(o.amount || 0).toLocaleString()}, Due Date: ${o.due_date || '—'})</li>`;
+      });
+      html += `</ul></div>`;
+    }
+
   } else {
     html = '<div class="text-muted" style="margin-top:15px;">No personal details provided.</div>';
   }

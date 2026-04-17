@@ -62,7 +62,7 @@ $recentPayments = $db->query("SELECT lp.* FROM loan_payments lp
         Member since <?= $member['date_joined'] ? date('F Y', strtotime($member['date_joined'])) : '—' ?>
       </div>
       <div style="margin-top:16px;">
-        <a href="member_loan_apply.php" class="btn btn-accent">Apply for Loan</a>
+        <a href="member_loan_application_form.php" class="btn btn-accent">Apply for Loan</a>
         <a href="member_loan_payment.php" class="btn" style="background:rgba(255,255,255,0.15);color:#fff;margin-left:8px;">Make Payment</a>
       </div>
     </div>

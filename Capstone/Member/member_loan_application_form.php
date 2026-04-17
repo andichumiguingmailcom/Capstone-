@@ -321,24 +321,40 @@ $loanTypes = $db->query("SELECT * FROM loan_types ORDER BY type_name");
           <div id="dependents-container">
             <?php $deps = $preAppData['dependents'] ?? []; ?>
             <?php if (empty($deps)): ?>
-              <div class="dependent-row grid-4" style="gap:10px; margin-bottom:10px;">
-                <input type="text" name="dep_name[]" class="form-control" placeholder="Name">
-                <input type="date" name="dep_dob[]" class="form-control" placeholder="DOB">
-                <input type="number" name="dep_age[]" class="form-control" placeholder="Age">
-                <input type="text" name="dep_rel[]" class="form-control" placeholder="Relationship">
+              <div class="dependent-card" style="background:#f9f9f9; border:1px solid #e0e0e0; border-radius:8px; padding:16px; margin-bottom:16px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                  <strong style="color:#2c5f80;">Dependent #1</strong>
+                  <button type="button" class="btn-remove-dependent" onclick="removeDependent(this)" style="display:none; padding:4px 8px; font-size:0.85rem; background:#e63946; color:white; border:none; border-radius:4px; cursor:pointer;">Remove</button>
+                </div>
+                <div class="form-row">
+                  <div class="form-group"><label class="form-label">Name</label><input type="text" name="dep_name[]" class="form-control"></div>
+                  <div class="form-group"><label class="form-label">Date of Birth</label><input type="date" name="dep_dob[]" class="form-control"></div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group"><label class="form-label">Age</label><input type="number" name="dep_age[]" class="form-control"></div>
+                  <div class="form-group"><label class="form-label">Relationship</label><input type="text" name="dep_rel[]" class="form-control"></div>
+                </div>
               </div>
             <?php else: ?>
-              <?php foreach ($deps as $dep): ?>
-                <div class="dependent-row grid-4" style="gap:10px; margin-bottom:10px;">
-                  <input type="text" name="dep_name[]" class="form-control" placeholder="Name" value="<?= htmlspecialchars($dep['name'] ?? '') ?>">
-                  <input type="date" name="dep_dob[]" class="form-control" placeholder="DOB" value="<?= htmlspecialchars($dep['dob'] ?? '') ?>">
-                  <input type="number" name="dep_age[]" class="form-control" placeholder="Age" value="<?= htmlspecialchars($dep['age'] ?? '') ?>">
-                  <input type="text" name="dep_rel[]" class="form-control" placeholder="Relationship" value="<?= htmlspecialchars($dep['rel'] ?? '') ?>">
+              <?php foreach ($deps as $idx => $dep): ?>
+                <div class="dependent-card" style="background:#f9f9f9; border:1px solid #e0e0e0; border-radius:8px; padding:16px; margin-bottom:16px;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                    <strong style="color:#2c5f80;">Dependent #<?= $idx + 1 ?></strong>
+                    <button type="button" class="btn-remove-dependent" onclick="removeDependent(this)" style="<?= count($deps) > 1 ? 'display:block;' : 'display:none;' ?> padding:4px 8px; font-size:0.85rem; background:#e63946; color:white; border:none; border-radius:4px; cursor:pointer;">Remove</button>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-group"><label class="form-label">Name</label><input type="text" name="dep_name[]" class="form-control" value="<?= htmlspecialchars($dep['name'] ?? '') ?>"></div>
+                    <div class="form-group"><label class="form-label">Date of Birth</label><input type="date" name="dep_dob[]" class="form-control" value="<?= htmlspecialchars($dep['dob'] ?? '') ?>"></div>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-group"><label class="form-label">Age</label><input type="number" name="dep_age[]" class="form-control" value="<?= htmlspecialchars($dep['age'] ?? '') ?>"></div>
+                    <div class="form-group"><label class="form-label">Relationship</label><input type="text" name="dep_rel[]" class="form-control" value="<?= htmlspecialchars($dep['rel'] ?? '') ?>"></div>
+                  </div>
                 </div>
               <?php endforeach; ?>
             <?php endif; ?>
           </div>
-          <button type="button" class="btn btn-outline" onclick="addDependent()">+ Add Dependent</button>
+          <button type="button" class="btn btn-outline" onclick="addDependent()">+ Add Another Dependent</button>
 
           <!-- INCOME & EXPENSES -->
           <h4 style="margin:24px 0 16px; color:var(--primary);">Income & Expenses</h4>
@@ -432,17 +448,56 @@ $loanTypes = $db->query("SELECT * FROM loan_types ORDER BY type_name");
 <script>
 function addDependent() {
   const container = document.getElementById('dependents-container');
-  const row = document.createElement('div');
-  row.className = 'dependent-row grid-4';
-  row.style.cssText = 'gap:10px; margin-bottom:10px;';
-  row.innerHTML = `
-    <input type="text" name="dep_name[]" class="form-control" placeholder="Name">
-    <input type="date" name="dep_dob[]" class="form-control" placeholder="DOB">
-    <input type="number" name="dep_age[]" class="form-control" placeholder="Age">
-    <input type="text" name="dep_rel[]" class="form-control" placeholder="Relationship">
+  const dependentCount = container.querySelectorAll('.dependent-card').length + 1;
+  
+  const card = document.createElement('div');
+  card.className = 'dependent-card';
+  card.style.cssText = 'background:#f9f9f9; border:1px solid #e0e0e0; border-radius:8px; padding:16px; margin-bottom:16px;';
+  card.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <strong style="color:#2c5f80;">Dependent #${dependentCount}</strong>
+      <button type="button" class="btn-remove-dependent" onclick="removeDependent(this)" style="padding:4px 8px; font-size:0.85rem; background:#e63946; color:white; border:none; border-radius:4px; cursor:pointer;">Remove</button>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Name</label><input type="text" name="dep_name[]" class="form-control"></div>
+      <div class="form-group"><label class="form-label">Date of Birth</label><input type="date" name="dep_dob[]" class="form-control"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Age</label><input type="number" name="dep_age[]" class="form-control"></div>
+      <div class="form-group"><label class="form-label">Relationship</label><input type="text" name="dep_rel[]" class="form-control"></div>
+    </div>
   `;
-  container.appendChild(row);
+  container.appendChild(card);
+  updateRemoveButtons();
 }
+
+function removeDependent(button) {
+  const card = button.closest('.dependent-card');
+  card.remove();
+  updateRemoveButtons();
+  updateDependentNumbers();
+}
+
+function updateRemoveButtons() {
+  const cards = document.querySelectorAll('.dependent-card');
+  cards.forEach(card => {
+    const btn = card.querySelector('.btn-remove-dependent');
+    btn.style.display = cards.length > 1 ? 'block' : 'none';
+  });
+}
+
+function updateDependentNumbers() {
+  const cards = document.querySelectorAll('.dependent-card');
+  cards.forEach((card, index) => {
+    const title = card.querySelector('strong');
+    title.textContent = `Dependent #${index + 1}`;
+  });
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+  updateRemoveButtons();
+});
 
 function calcMonthly() {
   const amount = parseFloat(document.getElementById('amountInput').value) || 0;

@@ -185,8 +185,7 @@ $apps = $db->query("SELECT *,
                       'ages' => json_decode($a['dependents_age'] ?? '[]', true),
                       'relationships' => json_decode($a['dependents_relationship'] ?? '[]', true)
                     ],
-                    'declaration' => $a['declaration'],
-                    'signature' => $a['signature']
+                    'declaration' => $a['declaration']
                   ]), ENT_QUOTES, 'UTF-8') ?>'>
                 <td class="text-muted">#<?= $a['id'] ?></td>
                 <td><div class="fw-600"><?= htmlspecialchars($a['full_name']) ?></div></td> 
@@ -272,7 +271,6 @@ function reviewApp(row) {
   html += `<div><strong>Residence Types:</strong> ${(details.residence_types || []).join(', ') || '—'}</div>`;
   html += `<div><strong>Business Name:</strong> ${details.business?.name || '—'}</div>`;
   html += `<div><strong>Facebook:</strong> ${details.business?.facebook || '—'}</div>`;
-  html += `<div><strong>Signature:</strong> ${details.signature || '—'}</div>`;
   html += `</div>`;
 
   if (details.spouse && details.spouse.name) {

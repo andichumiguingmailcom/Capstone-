@@ -128,7 +128,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $civilStatus = clean($_POST['civil_status'] ?? '');
     $occupation = clean($_POST['occupation'] ?? '');
     $resCert = clean($_POST['res_cert'] ?? '');
-    $residenceTypes = json_encode($_POST['residence'] ?? []);
+    $residenceTypes = json_encode(isset($_POST['residence']) ? [$_POST['residence']] : []);
     
     $spouseName = clean($_POST['spouse'] ?? '');
     $spouseDob = clean($_POST['spouse_dob'] ?? '');
@@ -152,7 +152,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $outstandingDueDate = clean($_POST['out_due_date'] ?? '');
     
     $declaration = clean($_POST['declaration'] ?? '');
-    $signature = clean($_POST['signature'] ?? '');
 
     // Process Dependents into separate arrays
     $dependentNames = [];
@@ -184,8 +183,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $msg = 'Please upload a valid ID document.';
     } else {
         $db = getDB();
-        $stmt = $db->prepare("INSERT INTO pre_applications (first_name, middle_name, last_name, email, phone, street, barangay, city, province, initial_capital, dob, sex, civil_status, occupation, res_cert, residence_types, spouse_name, spouse_dob, spouse_job, business_name, business_facebook, beneficiary_name, beneficiary_dob, beneficiary_sex, beneficiary_relationship, gross_income, expenses, net_income, outstanding_creditor, outstanding_address, outstanding_amount, outstanding_due_date, declaration, signature, dependents_name, dependents_dob, dependents_age, dependents_relationship) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
-        $stmt->bind_param('sssssssssdssssssssssssssdddsdsssssss', $fname, $mname, $lname, $email, $phone, $street, $brgy, $city, $prov, $initialCapital, $dob, $sex, $civilStatus, $occupation, $resCert, $residenceTypes, $spouseName, $spouseDob, $spouseJob, $businessName, $businessFacebook, $beneficiaryName, $beneficiaryDob, $beneficiarySex, $beneficiaryRelationship, $grossIncome, $expenses, $netIncome, $outstandingCreditor, $outstandingAddress, $outstandingAmount, $outstandingDueDate, $declaration, $signature, $dependentNamesJson, $dependentDobsJson, $dependentAgesJson, $dependentRelationshipsJson);
+        $stmt = $db->prepare("INSERT INTO pre_applications (first_name, middle_name, last_name, email, phone, street, barangay, city, province, initial_capital, dob, sex, civil_status, occupation, res_cert, residence_types, spouse_name, spouse_dob, spouse_job, business_name, business_facebook, beneficiary_name, beneficiary_dob, beneficiary_sex, beneficiary_relationship, gross_income, expenses, net_income, outstanding_creditor, outstanding_address, outstanding_amount, outstanding_due_date, declaration, dependents_name, dependents_dob, dependents_age, dependents_relationship) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+        $stmt->bind_param('sssssssssdssssssssssssssdddsdssssss', $fname, $mname, $lname, $email, $phone, $street, $brgy, $city, $prov, $initialCapital, $dob, $sex, $civilStatus, $occupation, $resCert, $residenceTypes, $spouseName, $spouseDob, $spouseJob, $businessName, $businessFacebook, $beneficiaryName, $beneficiaryDob, $beneficiarySex, $beneficiaryRelationship, $grossIncome, $expenses, $netIncome, $outstandingCreditor, $outstandingAddress, $outstandingAmount, $outstandingDueDate, $declaration, $dependentNamesJson, $dependentDobsJson, $dependentAgesJson, $dependentRelationshipsJson);
         $stmt->execute();
         $appId = $db->insert_id;
 
@@ -357,11 +356,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <div class="form-group">
             <label class="form-label">Residence Type</label>
             <div class="checkbox-group">
-              <label class="checkbox-item"><input type="checkbox" name="residence[]" value="owned"> Owned</label>
-              <label class="checkbox-item"><input type="checkbox" name="residence[]" value="mortgage"> Mortgage</label>
-              <label class="checkbox-item"><input type="checkbox" name="residence[]" value="rented"> Rented</label>
-              <label class="checkbox-item"><input type="checkbox" name="residence[]" value="free"> Free</label>
-              <label class="checkbox-item"><input type="checkbox" name="residence[]" value="parents"> With Parents</label>
+              <label class="checkbox-item"><input type="radio" name="residence" value="owned"> Owned</label>
+              <label class="checkbox-item"><input type="radio" name="residence" value="mortgage"> Mortgage</label>
+              <label class="checkbox-item"><input type="radio" name="residence" value="rented"> Rented</label>
+              <label class="checkbox-item"><input type="radio" name="residence" value="free"> Free</label>
+              <label class="checkbox-item"><input type="radio" name="residence" value="parents"> With Parents</label>
             </div>
           </div>
 
@@ -397,25 +396,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
           <!-- DEPENDENTS -->
           <div class="section-title">Dependents</div>
-          <div class="table-wrap">
-            <table class="loan-table">
-              <thead><tr><th>Name</th><th>DOB</th><th>Age</th><th>Relationship</th></tr></thead>
-              <tbody>
-                <tr>
-                  <td><input type="text" name="dep_name[]" class="form-control"></td>
-                  <td><input type="date" name="dep_dob[]" class="form-control"></td>
-                  <td><input type="number" name="dep_age[]" class="form-control"></td>
-                  <td><input type="text" name="dep_rel[]" class="form-control"></td>
-                </tr>
-                <tr>
-                  <td><input type="text" name="dep_name[]" class="form-control"></td>
-                  <td><input type="date" name="dep_dob[]" class="form-control"></td>
-                  <td><input type="number" name="dep_age[]" class="form-control"></td>
-                  <td><input type="text" name="dep_rel[]" class="form-control"></td>
-                </tr>
-              </tbody>
-            </table>
+          <div id="dependents-container">
+            <div class="dependent-card" style="background:#f9f9f9; border:1px solid #e0e0e0; border-radius:8px; padding:16px; margin-bottom:16px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <strong style="color:#7a1e2c;">Dependent #1</strong>
+                <button type="button" class="btn-remove-dependent" onclick="removeDependent(this)" style="display:none; padding:4px 8px; font-size:0.85rem; background:#e63946; color:white; border:none; border-radius:4px; cursor:pointer;">Remove</button>
+              </div>
+              <div class="form-row">
+                <div class="form-group"><label class="form-label">Name</label><input type="text" name="dep_name[]" class="form-control"></div>
+                <div class="form-group"><label class="form-label">Date of Birth</label><input type="date" name="dep_dob[]" class="form-control"></div>
+              </div>
+              <div class="form-row">
+                <div class="form-group"><label class="form-label">Age</label><input type="number" name="dep_age[]" class="form-control"></div>
+                <div class="form-group"><label class="form-label">Relationship</label><input type="text" name="dep_rel[]" class="form-control"></div>
+              </div>
+            </div>
           </div>
+          <button type="button" class="btn btn-outline" onclick="addDependent()" style="margin-top:8px;">+ Add Another Dependent</button>
 
           <!-- INCOME -->
           <div class="section-title">Income & Expenses</div>
@@ -439,7 +436,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <div class="form-group">
             <textarea name="declaration" class="form-control" rows="2">I certify that all information is true.</textarea>
           </div>
-          <div class="form-group"><label class="form-label">Signature</label><input type="text" name="signature" class="form-control"></div>
 
           <div class="section-title">Upload Documents</div>
           <div class="form-group">
@@ -470,6 +466,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?php endif; ?>
   </div>
 </div>
+
+<script>
+function addDependent() {
+  const container = document.getElementById('dependents-container');
+  const dependentCount = container.querySelectorAll('.dependent-card').length + 1;
+  
+  const card = document.createElement('div');
+  card.className = 'dependent-card';
+  card.style.cssText = 'background:#f9f9f9; border:1px solid #e0e0e0; border-radius:8px; padding:16px; margin-bottom:16px;';
+  card.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <strong style="color:#7a1e2c;">Dependent #${dependentCount}</strong>
+      <button type="button" class="btn-remove-dependent" onclick="removeDependent(this)" style="padding:4px 8px; font-size:0.85rem; background:#e63946; color:white; border:none; border-radius:4px; cursor:pointer;">Remove</button>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Name</label><input type="text" name="dep_name[]" class="form-control"></div>
+      <div class="form-group"><label class="form-label">Date of Birth</label><input type="date" name="dep_dob[]" class="form-control"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Age</label><input type="number" name="dep_age[]" class="form-control"></div>
+      <div class="form-group"><label class="form-label">Relationship</label><input type="text" name="dep_rel[]" class="form-control"></div>
+    </div>
+  `;
+  container.appendChild(card);
+  updateRemoveButtons();
+}
+
+function removeDependent(button) {
+  const card = button.closest('.dependent-card');
+  card.remove();
+  updateRemoveButtons();
+  updateDependentNumbers();
+}
+
+function updateRemoveButtons() {
+  const cards = document.querySelectorAll('.dependent-card');
+  cards.forEach(card => {
+    const btn = card.querySelector('.btn-remove-dependent');
+    btn.style.display = cards.length > 1 ? 'block' : 'none';
+  });
+}
+
+function updateDependentNumbers() {
+  const cards = document.querySelectorAll('.dependent-card');
+  cards.forEach((card, index) => {
+    const title = card.querySelector('strong');
+    title.textContent = `Dependent #${index + 1}`;
+  });
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+  updateRemoveButtons();
+});
+</script>
 
 </body>
 </html>

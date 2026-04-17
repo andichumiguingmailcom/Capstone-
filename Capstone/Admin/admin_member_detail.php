@@ -50,8 +50,7 @@ if ($preApp) {
             'ages' => json_decode($preApp['dependents_age'] ?? '[]', true) ?: [],
             'relationships' => json_decode($preApp['dependents_relationship'] ?? '[]', true) ?: []
         ],
-        'declaration' => $preApp['declaration'],
-        'signature' => $preApp['signature']
+        'declaration' => $preApp['declaration']
     ];
 }
 
@@ -230,10 +229,6 @@ $payments = $db->query("SELECT lp.*, l.principal FROM loan_payments lp
             <div class="form-group">
               <label class="form-label">Facebook</label>
               <div><?= htmlspecialchars($preAppDetails['business']['facebook'] ?? '—') ?></div>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Signature</label>
-              <div><?= htmlspecialchars($preAppDetails['signature'] ?? '—') ?></div>
             </div>
           </div>
         </div>

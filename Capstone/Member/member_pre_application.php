@@ -142,13 +142,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $beneficiarySex = clean($_POST['ben_sex'] ?? '');
     $beneficiaryRelationship = clean($_POST['relationship'] ?? '');
     
-    $grossIncome = !empty($_POST['gross']) ? (float)$_POST['gross'] : null;
-    $expenses = !empty($_POST['expenses']) ? (float)$_POST['expenses'] : null;
-    $netIncome = !empty($_POST['net']) ? (float)$_POST['net'] : null;
+    $grossIncome = !empty($_POST['gross']) ? (string)(float)$_POST['gross'] : '';
+    $expenses = !empty($_POST['expenses']) ? (string)(float)$_POST['expenses'] : '';
+    $netIncome = !empty($_POST['net']) ? (string)(float)$_POST['net'] : '';
     
     $outstandingCreditor = clean($_POST['out_creditor'] ?? '');
     $outstandingAddress = clean($_POST['out_address'] ?? '');
-    $outstandingAmount = !empty($_POST['out_amount']) ? (float)$_POST['out_amount'] : null;
+    $outstandingAmount = !empty($_POST['out_amount']) ? (string)(float)$_POST['out_amount'] : '';
     $outstandingDueDate = clean($_POST['out_due_date'] ?? '');
     
     $declaration = clean($_POST['declaration'] ?? '');
@@ -184,7 +184,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $db = getDB();
         $stmt = $db->prepare("INSERT INTO pre_applications (first_name, middle_name, last_name, email, phone, street, barangay, city, province, initial_capital, dob, sex, civil_status, occupation, res_cert, residence_types, spouse_name, spouse_dob, spouse_job, business_name, business_facebook, beneficiary_name, beneficiary_dob, beneficiary_sex, beneficiary_relationship, gross_income, expenses, net_income, outstanding_creditor, outstanding_address, outstanding_amount, outstanding_due_date, declaration, dependents_name, dependents_dob, dependents_age, dependents_relationship) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
-        $stmt->bind_param('sssssssssdssssssssssssssdddsdssssss', $fname, $mname, $lname, $email, $phone, $street, $brgy, $city, $prov, $initialCapital, $dob, $sex, $civilStatus, $occupation, $resCert, $residenceTypes, $spouseName, $spouseDob, $spouseJob, $businessName, $businessFacebook, $beneficiaryName, $beneficiaryDob, $beneficiarySex, $beneficiaryRelationship, $grossIncome, $expenses, $netIncome, $outstandingCreditor, $outstandingAddress, $outstandingAmount, $outstandingDueDate, $declaration, $dependentNamesJson, $dependentDobsJson, $dependentAgesJson, $dependentRelationshipsJson);
+        $stmt->bind_param('sssssssssdsssssssssssssssssssssssssss', $fname, $mname, $lname, $email, $phone, $street, $brgy, $city, $prov, $initialCapital, $dob, $sex, $civilStatus, $occupation, $resCert, $residenceTypes, $spouseName, $spouseDob, $spouseJob, $businessName, $businessFacebook, $beneficiaryName, $beneficiaryDob, $beneficiarySex, $beneficiaryRelationship, $grossIncome, $expenses, $netIncome, $outstandingCreditor, $outstandingAddress, $outstandingAmount, $outstandingDueDate, $declaration, $dependentNamesJson, $dependentDobsJson, $dependentAgesJson, $dependentRelationshipsJson);
         $stmt->execute();
         $appId = $db->insert_id;
 
@@ -255,7 +255,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $mail->isHTML(true);
                 $mail->Subject = 'Application Received - CoopIMS';
 
-                $mail->Body = "Hello " . htmlspecialchars($name) . ",<br><br>Thank you for submitting your application at CoopIMS.<br><br>Your application has been received and is currently under review. We will contact you within 3-5 business days regarding the status of your application.<br><br>Best regards,<br>CoopIMS Team";
+                $mail->Body = "Hello " . htmlspecialchars($fname) . ",<br><br>Thank you for submitting your application at CoopIMS.<br><br>Your application has been received and is currently under review. We will contact you within 3-5 business days regarding the status of your application.<br><br>Best regards,<br>CoopIMS Team";
 
                 $mail->send();
             } catch (Exception $e) {

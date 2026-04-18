@@ -161,7 +161,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $msg = 'You already have a pending loan application.'; $msgType = 'red';
     } else {
         $stmt = $db->prepare("INSERT INTO loan_applications (member_id,loan_type_id,amount,term_months,purpose,details_json) VALUES (?,?,?,?,?,?)");
-        $stmt->bind_param('iidisss', $memberId,$loanTypeId,$amount,$termMonths,$purpose,$detailsJson);
+        $stmt->bind_param('iidiss', $memberId,$loanTypeId,$amount,$termMonths,$purpose,$detailsJson);
         $stmt->execute();
         $msg = 'Your loan application has been submitted! We will notify you once reviewed.';
     }
@@ -245,9 +245,16 @@ $loanTypes = $db->query("SELECT * FROM loan_types ORDER BY type_name");
           <div class="form-group">
             <label class="form-label">Residence Types</label>
             <div style="display:flex; gap:10px; flex-wrap:wrap;">
-              <?php $resTypes = ['Owned', 'Rented', 'Mortgaged', 'Living with Relatives']; ?>
-              <?php foreach ($resTypes as $rt): ?>
-                <label><input type="checkbox" name="residence[]" value="<?= $rt ?>" <?= in_array($rt, $preAppData['residence_types'] ?? []) ? 'checked' : '' ?>> <?= $rt ?></label>
+              <?php 
+              $resTypesMap = [
+                  'owned' => 'Owned',
+                  'rented' => 'Rented',
+                  'mortgage' => 'Mortgaged',
+                  'free' => 'Free',
+                  'parents' => 'With Parents'
+              ];
+              foreach ($resTypesMap as $val => $label): ?>
+                <label><input type="checkbox" name="residence[]" value="<?= $val ?>" <?= in_array($val, $preAppData['residence_types'] ?? []) ? 'checked' : '' ?>> <?= $label ?></label>
               <?php endforeach; ?>
             </div>
           </div>
@@ -318,43 +325,42 @@ $loanTypes = $db->query("SELECT * FROM loan_types ORDER BY type_name");
 
           <!-- DEPENDENTS -->
           <h4 style="margin:24px 0 16px; color:var(--primary);">Dependents</h4>
-          <div id="dependents-container">
+          <div class="table-wrap" style="margin-bottom: 16px;">
+            <table class="loan-table" id="dependents-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Date of Birth</th>
+                  <th>Age</th>
+                  <th>Relationship</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="dependents-body">
             <?php $deps = $preAppData['dependents'] ?? []; ?>
             <?php if (empty($deps)): ?>
-              <div class="dependent-card" style="background:#f9f9f9; border:1px solid #e0e0e0; border-radius:8px; padding:16px; margin-bottom:16px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                  <strong style="color:#2c5f80;">Dependent #1</strong>
-                  <button type="button" class="btn-remove-dependent" onclick="removeDependent(this)" style="display:none; padding:4px 8px; font-size:0.85rem; background:#e63946; color:white; border:none; border-radius:4px; cursor:pointer;">Remove</button>
-                </div>
-                <div class="form-row">
-                  <div class="form-group"><label class="form-label">Name</label><input type="text" name="dep_name[]" class="form-control"></div>
-                  <div class="form-group"><label class="form-label">Date of Birth</label><input type="date" name="dep_dob[]" class="form-control"></div>
-                </div>
-                <div class="form-row">
-                  <div class="form-group"><label class="form-label">Age</label><input type="number" name="dep_age[]" class="form-control"></div>
-                  <div class="form-group"><label class="form-label">Relationship</label><input type="text" name="dep_rel[]" class="form-control"></div>
-                </div>
-              </div>
+                  <tr>
+                    <td><input type="text" name="dep_name[]" class="form-control"></td>
+                    <td><input type="date" name="dep_dob[]" class="form-control"></td>
+                    <td><input type="number" name="dep_age[]" class="form-control"></td>
+                    <td><input type="text" name="dep_rel[]" class="form-control"></td>
+                    <td><button type="button" class="btn btn-sm btn-danger" onclick="removeDepRow(this)" style="display:none;">✕</button></td>
+                  </tr>
             <?php else: ?>
-              <?php foreach ($deps as $idx => $dep): ?>
-                <div class="dependent-card" style="background:#f9f9f9; border:1px solid #e0e0e0; border-radius:8px; padding:16px; margin-bottom:16px;">
-                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                    <strong style="color:#2c5f80;">Dependent #<?= $idx + 1 ?></strong>
-                    <button type="button" class="btn-remove-dependent" onclick="removeDependent(this)" style="<?= count($deps) > 1 ? 'display:block;' : 'display:none;' ?> padding:4px 8px; font-size:0.85rem; background:#e63946; color:white; border:none; border-radius:4px; cursor:pointer;">Remove</button>
-                  </div>
-                  <div class="form-row">
-                    <div class="form-group"><label class="form-label">Name</label><input type="text" name="dep_name[]" class="form-control" value="<?= htmlspecialchars($dep['name'] ?? '') ?>"></div>
-                    <div class="form-group"><label class="form-label">Date of Birth</label><input type="date" name="dep_dob[]" class="form-control" value="<?= htmlspecialchars($dep['dob'] ?? '') ?>"></div>
-                  </div>
-                  <div class="form-row">
-                    <div class="form-group"><label class="form-label">Age</label><input type="number" name="dep_age[]" class="form-control" value="<?= htmlspecialchars($dep['age'] ?? '') ?>"></div>
-                    <div class="form-group"><label class="form-label">Relationship</label><input type="text" name="dep_rel[]" class="form-control" value="<?= htmlspecialchars($dep['rel'] ?? '') ?>"></div>
-                  </div>
-                </div>
-              <?php endforeach; ?>
+                  <?php foreach ($deps as $dep): ?>
+                    <tr>
+                      <td><input type="text" name="dep_name[]" class="form-control" value="<?= htmlspecialchars($dep['name'] ?? '') ?>"></td>
+                      <td><input type="date" name="dep_dob[]" class="form-control" value="<?= htmlspecialchars($dep['dob'] ?? '') ?>"></td>
+                      <td><input type="number" name="dep_age[]" class="form-control" value="<?= htmlspecialchars($dep['age'] ?? '') ?>"></td>
+                      <td><input type="text" name="dep_rel[]" class="form-control" value="<?= htmlspecialchars($dep['rel'] ?? '') ?>"></td>
+                      <td><button type="button" class="btn btn-sm btn-danger" onclick="removeDepRow(this)" <?= count($deps) > 1 ? '' : 'style="display:none;"' ?>>✕</button></td>
+                    </tr>
+                  <?php endforeach; ?>
             <?php endif; ?>
+              </tbody>
+            </table>
           </div>
-          <button type="button" class="btn btn-outline" onclick="addDependent()">+ Add Another Dependent</button>
+          <button type="button" class="btn btn-outline" onclick="addDepRow()">+ Add Dependent</button>
 
           <!-- INCOME & EXPENSES -->
           <h4 style="margin:24px 0 16px; color:var(--primary);">Income & Expenses</h4>
@@ -446,58 +452,36 @@ $loanTypes = $db->query("SELECT * FROM loan_types ORDER BY type_name");
 </div>
 
 <script>
-function addDependent() {
-  const container = document.getElementById('dependents-container');
-  const dependentCount = container.querySelectorAll('.dependent-card').length + 1;
+function addDepRow() {
+  const tbody = document.getElementById('dependents-body');
   
-  const card = document.createElement('div');
-  card.className = 'dependent-card';
-  card.style.cssText = 'background:#f9f9f9; border:1px solid #e0e0e0; border-radius:8px; padding:16px; margin-bottom:16px;';
-  card.innerHTML = `
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-      <strong style="color:#2c5f80;">Dependent #${dependentCount}</strong>
-      <button type="button" class="btn-remove-dependent" onclick="removeDependent(this)" style="padding:4px 8px; font-size:0.85rem; background:#e63946; color:white; border:none; border-radius:4px; cursor:pointer;">Remove</button>
-    </div>
-    <div class="form-row">
-      <div class="form-group"><label class="form-label">Name</label><input type="text" name="dep_name[]" class="form-control"></div>
-      <div class="form-group"><label class="form-label">Date of Birth</label><input type="date" name="dep_dob[]" class="form-control"></div>
-    </div>
-    <div class="form-row">
-      <div class="form-group"><label class="form-label">Age</label><input type="number" name="dep_age[]" class="form-control"></div>
-      <div class="form-group"><label class="form-label">Relationship</label><input type="text" name="dep_rel[]" class="form-control"></div>
-    </div>
+  const row = document.createElement('tr');
+  row.innerHTML = `
+    <td><input type="text" name="dep_name[]" class="form-control"></td>
+    <td><input type="date" name="dep_dob[]" class="form-control"></td>
+    <td><input type="number" name="dep_age[]" class="form-control"></td>
+    <td><input type="text" name="dep_rel[]" class="form-control"></td>
+    <td><button type="button" class="btn btn-sm btn-danger" onclick="removeDepRow(this)">✕</button></td>
   `;
-  container.appendChild(card);
-  updateRemoveButtons();
+  tbody.appendChild(row);
+  updateDepActions();
 }
 
-function removeDependent(button) {
-  const card = button.closest('.dependent-card');
-  card.remove();
-  updateRemoveButtons();
-  updateDependentNumbers();
+function removeDepRow(btn) {
+  btn.closest('tr').remove();
+  updateDepActions();
 }
 
-function updateRemoveButtons() {
-  const cards = document.querySelectorAll('.dependent-card');
-  cards.forEach(card => {
-    const btn = card.querySelector('.btn-remove-dependent');
-    btn.style.display = cards.length > 1 ? 'block' : 'none';
-  });
-}
-
-function updateDependentNumbers() {
-  const cards = document.querySelectorAll('.dependent-card');
-  cards.forEach((card, index) => {
-    const title = card.querySelector('strong');
-    title.textContent = `Dependent #${index + 1}`;
+function updateDepActions() {
+  const rows = document.querySelectorAll('#dependents-body tr');
+  rows.forEach(row => {
+    const btn = row.querySelector('.btn-danger');
+    if (btn) btn.style.display = rows.length > 1 ? 'block' : 'none';
   });
 }
 
 // Initialize on page load
-document.addEventListener('DOMContentLoaded', function() {
-  updateRemoveButtons();
-});
+document.addEventListener('DOMContentLoaded', updateDepActions);
 
 function calcMonthly() {
   const amount = parseFloat(document.getElementById('amountInput').value) || 0;
@@ -519,7 +503,5 @@ function calcMonthly() {
   }
 }
 </script>
-
-<?php include '../includes/member_sidebar.php'; ?>
 </body>
 </html>

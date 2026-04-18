@@ -23,7 +23,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $amount = (float)$_POST['amount'];
     $method = clean($_POST['payment_method']);
     $ref    = clean($_POST['reference_no'] ?? '');
-    $uid    = $_SESSION['user_id'] ?? 0;
+    $recordedBy = null; // Member-initiated payments aren't recorded by a staff 'user'
+
+    // Auto-generate receipt number for cash payments if empty
+    if ($method === 'cash' && empty($ref)) {
+        $ref = 'RCP-' . date('YmdHis') . '-' . rand(100, 999);
+    }
 
     // Verify loan belongs to member
     $stmt = $db->prepare("SELECT id, balance FROM loans WHERE id=? AND member_id=? AND status='active'");
@@ -33,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($loanCheck && $amount > 0) {
         $stmt = $db->prepare("INSERT INTO loan_payments (loan_id, amount, payment_method, reference_no, recorded_by) VALUES (?,?,?,?,?)");
-        $stmt->bind_param('idssi', $loanId, $amount, $method, $ref, $uid);
+        $stmt->bind_param('idssi', $loanId, $amount, $method, $ref, $recordedBy);
         $stmt->execute();
 
         $newBalance = max(0, $loanCheck['balance'] - $amount);

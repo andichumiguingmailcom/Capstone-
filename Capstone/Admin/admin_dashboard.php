@@ -104,7 +104,7 @@ $lowStockItems = $db->query("SELECT * FROM products WHERE stock <= reorder_pt AN
           <span class="stat-icon">📝</span>
           <div class="stat-value"><?= $pendingLoans ?></div>
           <div class="stat-label">Pending Loan Applications</div>
-          <div class="stat-change"><a href="admin_loan_applications.php" style="color:inherit; text-decoration:none; font-weight:600;">View all →</a></div>
+          <div class="stat-change"><a href="<?= appendContextToUrl('admin_loan_applications.php') ?>" style="color:inherit; text-decoration:none; font-weight:600;">View all →</a></div>
         </div>
         <div class="stat-card blue" style="grid-column: span 4;">
           <span class="stat-icon">💳</span>
@@ -122,13 +122,13 @@ $lowStockItems = $db->query("SELECT * FROM products WHERE stock <= reorder_pt AN
           <span class="stat-icon">📦</span>
           <div class="stat-value"><?= $lowStock ?></div>
           <div class="stat-label">Low Stock Items</div>
-          <div class="stat-change"><a href="admin_inventory.php" style="color:inherit; text-decoration:none; font-weight:600;">Manage inventory →</a></div>
+          <div class="stat-change"><a href="<?= appendContextToUrl('admin_inventory.php') ?>" style="color:inherit; text-decoration:none; font-weight:600;">Manage inventory →</a></div>
         </div>
         <div class="stat-card gold" style="grid-column: span 4;">
           <span class="stat-icon">📋</span>
           <div class="stat-value"><?= $pendingPreApps ?></div>
           <div class="stat-label">Pre-Applications Pending</div>
-          <div class="stat-change"><a href="admin_pre_applications.php" style="color:inherit; text-decoration:none; font-weight:600;">Review →</a></div>
+          <div class="stat-change"><a href="<?= appendContextToUrl('admin_pre_applications.php') ?>" style="color:inherit; text-decoration:none; font-weight:600;">Review →</a></div>
         </div>
       </div>
     </div>
@@ -140,7 +140,7 @@ $lowStockItems = $db->query("SELECT * FROM products WHERE stock <= reorder_pt AN
       <div class="card reveal-on-scroll">
         <div class="card-header">
           <span class="card-title">Recent Loan Applications</span>
-          <a href="admin_loan_applications.php" class="btn btn-sm btn-outline">View All</a>
+          <a href="<?= appendContextToUrl('admin_loan_applications.php') ?>" class="btn btn-sm btn-outline">View All</a>
         </div>
         <div class="card-body">
           <div class="table-wrap">
@@ -186,7 +186,7 @@ $lowStockItems = $db->query("SELECT * FROM products WHERE stock <= reorder_pt AN
         <div class="card reveal-on-scroll" style="border-left:3px solid var(--danger);">
           <div class="card-header">
             <span class="card-title" style="color:var(--danger);">⚠️ Low Stock Alert</span>
-            <a href="admin_inventory.php" class="btn btn-sm btn-outline">Manage</a>
+            <a href="<?= appendContextToUrl('admin_inventory.php') ?>" class="btn btn-sm btn-outline">Manage</a>
           </div>
           <div class="card-body">
             <?php while ($item = $lowStockItems->fetch_assoc()): ?>
@@ -208,7 +208,7 @@ $lowStockItems = $db->query("SELECT * FROM products WHERE stock <= reorder_pt AN
         <div class="card reveal-on-scroll">
           <div class="card-header">
             <span class="card-title">Recent Sales</span>
-            <a href="admin_sales.php" class="btn btn-sm btn-outline">View All Sales</a>
+            <a href="<?= appendContextToUrl('admin_sales.php') ?>" class="btn btn-sm btn-outline">View All Sales</a>
           </div>
           <div class="card-body">
             <div class="table-wrap">

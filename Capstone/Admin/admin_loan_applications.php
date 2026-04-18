@@ -39,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->bind_param('sisi', $status, $_SESSION['user_id'], $remarks, $id);
         $stmt->execute();
 
-        header('Location: admin_loan_applications.php?msg=' . urlencode('Application ' . ($status === 'for_gm_evaluation' ? 'approved' : 'rejected') . ' successfully.'));
+        header('Location: ' . appendContextToUrl('admin_loan_applications.php?msg=' . urlencode('Application ' . ($status === 'for_gm_evaluation' ? 'approved' : 'rejected') . ' successfully.')));
         exit;
     }
 
@@ -51,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $current = $db->query("SELECT la.status, u.role AS approved_by_role FROM loan_applications la LEFT JOIN users u ON la.approved_by=u.id WHERE la.id=$id")->fetch_assoc();
         if (!$current || $current['status'] !== 'for_gm_evaluation' || $current['approved_by_role'] !== 'loan_officer') {
-            header('Location: admin_loan_applications.php?msg=' . urlencode('Application must be approved by loan officer first.'));
+            header('Location: ' . appendContextToUrl('admin_loan_applications.php?msg=' . urlencode('Application must be approved by loan officer first.')));
             exit;
         }
 
@@ -60,7 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->bind_param('sisi', $status, $_SESSION['user_id'], $remarks, $id);
         $stmt->execute();
 
-        header('Location: admin_loan_applications.php?msg=' . urlencode('Application ' . ($status === 'approved' ? 'approved by GM' : 'rejected by GM') . ' successfully.'));
+        header('Location: ' . appendContextToUrl('admin_loan_applications.php?msg=' . urlencode('Application ' . ($status === 'approved' ? 'approved by GM' : 'rejected by GM') . ' successfully.')));
         exit;
     }
 
@@ -76,7 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                            WHERE la.id=$id AND la.status='approved'")->fetch_assoc();
 
         if (!$app || $app['approved_by_role'] !== 'general_manager') {
-            header('Location: admin_loan_applications.php?msg=' . urlencode('Application must be approved by general manager first.'));
+            header('Location: ' . appendContextToUrl('admin_loan_applications.php?msg=' . urlencode('Application must be approved by general manager first.')));
             exit;
         }
 
@@ -98,7 +98,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             VALUES ($id, {$app['member_id']}, {$app['amount']}, {$app['amount']}, $monthly, '$due')");
         $db->query("UPDATE loan_applications SET status='disbursed' WHERE id=$id");
 
-        header('Location: admin_loan_applications.php?msg=' . urlencode('Application disbursed successfully.'));
+        header('Location: ' . appendContextToUrl('admin_loan_applications.php?msg=' . urlencode('Application disbursed successfully.')));
         exit;
     }
 }
@@ -108,7 +108,7 @@ $filterStatus = clean($_GET['status'] ?? '');
 
 $where = $filterStatus ? "WHERE la.status='$filterStatus'" : '';
 $applications = $db->query("SELECT la.*, CONCAT_WS(' ', m.first_name, m.last_name) as full_name, m.member_id AS mem_code, lt.type_name, lt.interest,
-    u.role AS approved_by_role,
+    u.role AS approved_by_role, CONCAT_WS(' ', u.first_name, u.last_name) AS approver_name,
     (SELECT id FROM loans WHERE application_id = la.id LIMIT 1) AS loan_id
     FROM loan_applications la 
     JOIN members m ON la.member_id = m.id 
@@ -145,7 +145,7 @@ $members   = $db->query("SELECT id, member_id, CONCAT_WS(' ', first_name, last_n
         <span class="card-title">All Applications</span>
         <div class="flex gap-2">
           <?php foreach(['','pending','approved','rejected','disbursed'] as $s): ?>
-            <a href="?status=<?= $s ?>" class="btn btn-sm <?= $filterStatus===$s ? 'btn-primary' : 'btn-ghost' ?>">
+            <a href="<?= appendContextToUrl('?status='.$s) ?>" class="btn btn-sm <?= $filterStatus===$s ? 'btn-primary' : 'btn-ghost' ?>">
               <?= $s ? ucfirst($s) : 'All' ?>
             </a>
           <?php endforeach; ?>
@@ -217,6 +217,7 @@ $members   = $db->query("SELECT id, member_id, CONCAT_WS(' ', first_name, last_n
                     data-date-decision="<?= $row['approved_at'] ? htmlspecialchars(date('Y-m-d', strtotime($row['approved_at'])), ENT_QUOTES) : 'Pending' ?>"
                     data-status="<?= htmlspecialchars($row['status'], ENT_QUOTES) ?>"
                     data-remarks="<?= htmlspecialchars($row['remarks'] ?? 'No remarks', ENT_QUOTES) ?>"
+                    data-approver="<?= htmlspecialchars($row['approver_name'] ?? '—', ENT_QUOTES) ?>"
                     data-details='<?= htmlspecialchars($row['details_json'] ?? '{}', ENT_QUOTES) ?>'
                   >
                     📄 View
@@ -237,7 +238,7 @@ $members   = $db->query("SELECT id, member_id, CONCAT_WS(' ', first_name, last_n
   <div class="modal">
     <button class="modal-close" onclick="closeModal('modal-add-loan')">✕</button>
     <div class="modal-title">📝 New Loan Application</div>
-    <form method="POST" action="admin_loan_applications.php">
+    <form method="POST" action="<?= appendContextToUrl('admin_loan_applications.php') ?>">
       <div class="form-group">
         <label class="form-label">Member</label>
         <select name="member_id" class="form-control" required>
@@ -314,6 +315,7 @@ $members   = $db->query("SELECT id, member_id, CONCAT_WS(' ', first_name, last_n
       <div><strong>Date Applied:</strong> <span id="detailDateApplied"></span></div>
       <div><strong>Date Decision:</strong> <span id="detailDateDecision"></span></div>
       <div><strong>Status:</strong> <span id="detailStatus"></span></div>
+      <div><strong>Processed By:</strong> <span id="detailApprover"></span></div>
       <div style="grid-column:1/-1;"><strong>Remarks:</strong> <span id="detailRemarks"></span></div>
       <div style="grid-column:1/-1; margin-top:15px;"><strong>Personal Details:</strong></div>
       <div style="grid-column:1/-1;" id="applicationPersonalDetails"></div>
@@ -359,6 +361,7 @@ function viewApplication(button) {
   document.getElementById('detailDateDecision').textContent = dateDecision === '' ? 'Pending' : dateDecision;
   document.getElementById('detailStatus').textContent = status;
   document.getElementById('detailRemarks').textContent = remarks;
+  document.getElementById('detailApprover').textContent = button.dataset.approver || '—';
 
   // Display personal details
   let details = {};

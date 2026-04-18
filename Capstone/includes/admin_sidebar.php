@@ -43,7 +43,7 @@ $user = getCurrentUser();
       <span class="nav-icon">💳</span> Loan Records
     </a>
     <?php endif; ?>
-    <?php if (in_array($user['role'], ['general_manager','collector'], true)): ?>
+    <?php if (in_array($user['role'], ['general_manager','collector','loan_officer'], true)): ?>
     <a href="<?= appendContextToUrl('admin_payments.php') ?>" class="nav-item <?= ($activePage??'') === 'payments' ? 'active' : '' ?>">
       <span class="nav-icon">💰</span> Payments
     </a>

@@ -12,6 +12,8 @@ require_once '../includes/config.php';
 requireLogin(['general_manager','book_keeper','collector','loan_officer']);
 $activePage = 'loans';
 $db = getDB();
+$user = getCurrentUser();
+$isCollector = $user['role'] === 'collector';
 
 $msg = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['loan_id']) && isset($_POST['action'])) {
@@ -129,9 +131,11 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_settle_form' && isset($_G
       <input type="hidden" name="action" value="settle">
       <div class="modal-footer">
         <button type="button" class="btn btn-ghost" onclick="closeModal('modal-settle-loan')">Cancel</button>
+        <?php if ($_SESSION['role'] !== 'collector'): ?>
         <button type="submit" class="btn btn-primary" <?= $loan['balance'] > 0 ? 'disabled' : '' ?>>
           <?= $loan['balance'] > 0 ? '❌ Cannot Settle (Outstanding Balance)' : '✅ Confirm Settlement' ?>
         </button>
+        <?php endif; ?>
       </div>
     </form>
     <?php
@@ -210,7 +214,10 @@ $loans = $db->query("SELECT l.*, CONCAT_WS(' ', m.first_name, m.last_name) as fu
                 <td><span class="badge <?= $loan['status'] === 'active' ? 'badge-blue' : ($loan['status'] === 'settled' ? 'badge-green' : 'badge-red') ?>"><?= ucfirst($loan['status']) ?></span></td>
                 <td>
                   <?php if ($loan['status'] === 'active'): ?>
-                  <button class="btn btn-sm btn-primary" onclick="openSettleModal(<?= $loan['id'] ?>, '<?= htmlspecialchars($loan['full_name']) ?>', '<?= htmlspecialchars($loan['mem_code']) ?>', <?= $loan['balance'] ?>)">Mark settled</button>
+                  <?php if (!$isCollector): ?>
+                    <button class="btn btn-sm btn-primary" onclick="openSettleModal(<?= $loan['id'] ?>, '<?= htmlspecialchars($loan['full_name']) ?>', '<?= htmlspecialchars($loan['mem_code']) ?>', <?= $loan['balance'] ?>)">Mark settled</button>
+                  <?php endif; ?>
+                  <button class="btn btn-sm <?= $isCollector ? 'btn-primary' : 'btn-ghost' ?>" onclick="openSettleModal(<?= $loan['id'] ?>, '<?= htmlspecialchars($loan['full_name']) ?>', '<?= htmlspecialchars($loan['mem_code']) ?>', <?= $loan['balance'] ?>)">View</button>
                   <?php else: ?>
                   <span class="text-muted">—</span>
                   <?php endif; ?>
